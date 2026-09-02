@@ -1,0 +1,7 @@
+decision,alternatives,chosen_reason,tradeoff
+Externalize acoustic data from IFC,Embedded IFC properties,Test 2: Independent updates without IFC edits,Creates availability dependency on external resource
+Use IFC-native IfcDocumentReference as primary carrier,Custom HFT property set only,Test 2: Native→RDF had equivalent behavior with lower IFC overhead (2 entities vs 5),Less domain-specific discoverability (mitigated by HFT anchor)
+RDF for external registry representation,JSON or XML,"Explicit PROV-O provenance relationships, graph extensibility",Requires RDF tooling; JSON showed same update-independence behavior
+Separate MappingAssertion layer for semantic state,Store status in IFC or embed in acoustic record,Test 3: Technical resolution ≠ semantic validity; mutable state should not force IFC edits,Adds architectural layer and complexity
+Immutable assertion revisions with prov:wasRevisionOf,Overwrite current state,Preserve evidence and rationale history for auditing,Graph size grows with revisions (5 revisions in final test)
+Reduce HFT_AcousticLink to semantic anchor only,Keep full acoustic data + status in HFT,Hybrid v1: Avoid URI duplication and mutable state in IFC,Requires both native and HFT mechanisms (complementary roles)

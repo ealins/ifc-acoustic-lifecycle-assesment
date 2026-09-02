@@ -1,0 +1,38 @@
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix map: <https://example.org/hft-acoustic/mapping/vocab/> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+map:MappingSeriesShape a sh:NodeShape ;
+    sh:targetClass map:MappingSeries ;
+    sh:property [ sh:path map:ifcElement ; sh:minCount 1 ; sh:maxCount 1 ; sh:nodeKind sh:IRI ] ;
+    sh:property [ sh:path map:acousticRecord ; sh:minCount 1 ; sh:maxCount 1 ; sh:nodeKind sh:IRI ] ;
+    sh:property [ sh:path map:currentAssertion ; sh:minCount 1 ; sh:maxCount 1 ; sh:class map:MappingAssertion ] .
+
+map:MappingAssertionShape a sh:NodeShape ;
+    sh:targetClass map:MappingAssertion ;
+    sh:property [ sh:path map:ifcElement ; sh:minCount 1 ; sh:maxCount 1 ; sh:nodeKind sh:IRI ] ;
+    sh:property [ sh:path map:acousticRecord ; sh:minCount 1 ; sh:maxCount 1 ; sh:nodeKind sh:IRI ] ;
+    sh:property [ sh:path map:status ; sh:minCount 1 ; sh:maxCount 1 ; sh:nodeKind sh:IRI ] ;
+    sh:property [ sh:path map:rationale ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:property [ sh:path map:ifcModelVersion ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:property [ sh:path map:recordVersion ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:property [ sh:path map:technicalResolution ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:boolean ] ;
+    sh:property [ sh:path map:requiresReview ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:boolean ] ;
+    sh:property [ sh:path map:assessedAt ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:dateTime ] ;
+    sh:property [ sh:path prov:wasGeneratedBy ; sh:minCount 1 ; sh:maxCount 1 ; sh:class map:ValidationActivity ] .
+
+map:ValidationActivityShape a sh:NodeShape ;
+    sh:targetClass map:ValidationActivity ;
+    sh:property [ sh:path prov:used ; sh:minCount 2 ; sh:nodeKind sh:IRI ] ;
+    sh:property [ sh:path prov:wasAssociatedWith ; sh:minCount 1 ; sh:nodeKind sh:IRI ] ;
+    sh:property [ sh:path map:trigger ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:property [ sh:path prov:endedAtTime ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:dateTime ] .
+
+
+map:ChangeEventShape a sh:NodeShape ;
+    sh:targetClass map:ChangeEvent ;
+    sh:property [ sh:path map:changeCategory ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:property [ sh:path map:changedField ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:property [ sh:path map:oldValue ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:property [ sh:path map:newValue ; sh:minCount 1 ; sh:maxCount 1 ] .

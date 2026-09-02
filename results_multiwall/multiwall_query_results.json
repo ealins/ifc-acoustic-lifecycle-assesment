@@ -1,0 +1,354 @@
+{
+  "pilot_metal_stud": {
+    "wall_guid": "2qL6OSUnz6ZAzEOn1HxeD2",
+    "wall_name": "Walls : Walls_3OGArc01 : Walls_3OGArc01",
+    "record_id": "vabdat-310",
+    "record_scope": "real source reference",
+    "initial": {
+      "Embedded IFC": {
+        "Q1": {
+          "value": 44.1,
+          "unit": "dB",
+          "metric": "Rw"
+        },
+        "Q2": {
+          "assembly": "B_bGP12_frM75||iMW60_bGP12",
+          "construction": "metal frame construction (MFC)"
+        },
+        "Q3": {
+          "source": "ift Rosenheim",
+          "reference": "Anhang, Luftschallmessung-Nr. M_25"
+        },
+        "Q4": {
+          "method": "Not explicitly specified in the VaBDat source used for this prototype",
+          "year": "2022",
+          "version": "prototype-v1"
+        },
+        "Q5": [
+          {
+            "global_id": "2qL6OSUnz6ZAzEOn1HxeD2",
+            "name": "Walls : Walls_3OGArc01 : Walls_3OGArc01"
+          }
+        ]
+      },
+      "Native IFC reference": {
+        "Q1": {
+          "value": 44.1,
+          "unit": "dB",
+          "metric": "Rw"
+        },
+        "Q2": {
+          "assembly": "B_bGP12_frM75||iMW60_bGP12",
+          "construction": "metal frame construction (MFC)"
+        },
+        "Q3": {
+          "source": "ift Rosenheim",
+          "reference": "Anhang, Luftschallmessung-Nr. M_25"
+        },
+        "Q4": {
+          "method": "Not explicitly specified in the VaBDat source used for this prototype",
+          "year": "2022",
+          "version": "prototype-v1"
+        },
+        "Q5": [
+          {
+            "global_id": "2qL6OSUnz6ZAzEOn1HxeD2",
+            "name": "Walls : Walls_3OGArc01 : Walls_3OGArc01",
+            "record_uri": "https://example.org/hft-acoustic-native/record/vabdat-310.json"
+          }
+        ]
+      },
+      "Proposed IFC-RDF": {
+        "Q1": {
+          "value": "44.1",
+          "unit": "dB",
+          "metric": "Rw"
+        },
+        "Q2": {
+          "assembly": "B_bGP12_frM75||iMW60_bGP12",
+          "construction": "metal frame construction (MFC)"
+        },
+        "Q3": {
+          "source": "ift Rosenheim",
+          "reference": "Anhang, Luftschallmessung-Nr. M_25"
+        },
+        "Q4": {
+          "method": "Not explicitly specified in the VaBDat source used for this prototype",
+          "year": "2022",
+          "version": "prototype-v1"
+        },
+        "Q5": [
+          {
+            "global_id": "2qL6OSUnz6ZAzEOn1HxeD2",
+            "name": "Walls : Walls_3OGArc01 : Walls_3OGArc01",
+            "mapping_status": "AMBIGUOUS_REFERENCE_MATCH"
+          }
+        ]
+      }
+    }
+  },
+  "control_concrete_150": {
+    "wall_guid": "0wnAJp1nDEywwo7Vo$xbfn",
+    "wall_name": "Walls : Basic Wall : Generic - Concrete - 0.15",
+    "record_id": "control-concrete-150",
+    "record_scope": "synthetic architecture control",
+    "initial": {
+      "Embedded IFC": {
+        "Q1": {
+          "value": 50.0,
+          "unit": "dB",
+          "metric": "Rw"
+        },
+        "Q2": {
+          "assembly": "CONTROL - Generic concrete wall 0.15 m",
+          "construction": "concrete"
+        },
+        "Q3": {
+          "source": "CONTROLLED SYNTHETIC RECORD",
+          "reference": "architecture-replication-control-150"
+        },
+        "Q4": {
+          "method": "Synthetic controlled record; not an acoustic measurement",
+          "year": "2026",
+          "version": "control-v1"
+        },
+        "Q5": [
+          {
+            "global_id": "0wnAJp1nDEywwo7Vo$xbfn",
+            "name": "Walls : Basic Wall : Generic - Concrete - 0.15"
+          }
+        ]
+      },
+      "Native IFC reference": {
+        "Q1": {
+          "value": 50.0,
+          "unit": "dB",
+          "metric": "Rw"
+        },
+        "Q2": {
+          "assembly": "CONTROL - Generic concrete wall 0.15 m",
+          "construction": "concrete"
+        },
+        "Q3": {
+          "source": "CONTROLLED SYNTHETIC RECORD",
+          "reference": "architecture-replication-control-150"
+        },
+        "Q4": {
+          "method": "Synthetic controlled record; not an acoustic measurement",
+          "year": "2026",
+          "version": "control-v1"
+        },
+        "Q5": [
+          {
+            "global_id": "0wnAJp1nDEywwo7Vo$xbfn",
+            "name": "Walls : Basic Wall : Generic - Concrete - 0.15",
+            "record_uri": "https://example.org/hft-acoustic-native/record/control-concrete-150.json"
+          }
+        ]
+      },
+      "Proposed IFC-RDF": {
+        "Q1": {
+          "value": "50.0",
+          "unit": "dB",
+          "metric": "Rw"
+        },
+        "Q2": {
+          "assembly": "CONTROL - Generic concrete wall 0.15 m",
+          "construction": "concrete"
+        },
+        "Q3": {
+          "source": "CONTROLLED SYNTHETIC RECORD",
+          "reference": "architecture-replication-control-150"
+        },
+        "Q4": {
+          "method": "Synthetic controlled record; not an acoustic measurement",
+          "year": "2026",
+          "version": "control-v1"
+        },
+        "Q5": [
+          {
+            "global_id": "0wnAJp1nDEywwo7Vo$xbfn",
+            "name": "Walls : Basic Wall : Generic - Concrete - 0.15",
+            "mapping_status": "CONTROLLED_REFERENCE"
+          }
+        ]
+      }
+    }
+  },
+  "control_concrete_300": {
+    "wall_guid": "1You9r7r15Ax77pHYWcjAi",
+    "wall_name": "Walls : Basic Wall : Generic - Concrete - 0.30",
+    "record_id": "control-concrete-300",
+    "record_scope": "synthetic architecture control",
+    "initial": {
+      "Embedded IFC": {
+        "Q1": {
+          "value": 55.0,
+          "unit": "dB",
+          "metric": "Rw"
+        },
+        "Q2": {
+          "assembly": "CONTROL - Generic concrete wall 0.30 m",
+          "construction": "concrete"
+        },
+        "Q3": {
+          "source": "CONTROLLED SYNTHETIC RECORD",
+          "reference": "architecture-replication-control-300"
+        },
+        "Q4": {
+          "method": "Synthetic controlled record; not an acoustic measurement",
+          "year": "2026",
+          "version": "control-v1"
+        },
+        "Q5": [
+          {
+            "global_id": "1You9r7r15Ax77pHYWcjAi",
+            "name": "Walls : Basic Wall : Generic - Concrete - 0.30"
+          }
+        ]
+      },
+      "Native IFC reference": {
+        "Q1": {
+          "value": 55.0,
+          "unit": "dB",
+          "metric": "Rw"
+        },
+        "Q2": {
+          "assembly": "CONTROL - Generic concrete wall 0.30 m",
+          "construction": "concrete"
+        },
+        "Q3": {
+          "source": "CONTROLLED SYNTHETIC RECORD",
+          "reference": "architecture-replication-control-300"
+        },
+        "Q4": {
+          "method": "Synthetic controlled record; not an acoustic measurement",
+          "year": "2026",
+          "version": "control-v1"
+        },
+        "Q5": [
+          {
+            "global_id": "1You9r7r15Ax77pHYWcjAi",
+            "name": "Walls : Basic Wall : Generic - Concrete - 0.30",
+            "record_uri": "https://example.org/hft-acoustic-native/record/control-concrete-300.json"
+          }
+        ]
+      },
+      "Proposed IFC-RDF": {
+        "Q1": {
+          "value": "55.0",
+          "unit": "dB",
+          "metric": "Rw"
+        },
+        "Q2": {
+          "assembly": "CONTROL - Generic concrete wall 0.30 m",
+          "construction": "concrete"
+        },
+        "Q3": {
+          "source": "CONTROLLED SYNTHETIC RECORD",
+          "reference": "architecture-replication-control-300"
+        },
+        "Q4": {
+          "method": "Synthetic controlled record; not an acoustic measurement",
+          "year": "2026",
+          "version": "control-v1"
+        },
+        "Q5": [
+          {
+            "global_id": "1You9r7r15Ax77pHYWcjAi",
+            "name": "Walls : Basic Wall : Generic - Concrete - 0.30",
+            "mapping_status": "CONTROLLED_REFERENCE"
+          }
+        ]
+      }
+    }
+  },
+  "control_wood_100": {
+    "wall_guid": "3jVfQlWajACA3M083XXgEN",
+    "wall_name": "Walls : Basic Wall : Generic -Wood - 0.10 2",
+    "record_id": "control-wood-100",
+    "record_scope": "synthetic architecture control",
+    "initial": {
+      "Embedded IFC": {
+        "Q1": {
+          "value": 40.0,
+          "unit": "dB",
+          "metric": "Rw"
+        },
+        "Q2": {
+          "assembly": "CONTROL - Generic wood wall 0.10 m",
+          "construction": "wood"
+        },
+        "Q3": {
+          "source": "CONTROLLED SYNTHETIC RECORD",
+          "reference": "architecture-replication-control-wood-100"
+        },
+        "Q4": {
+          "method": "Synthetic controlled record; not an acoustic measurement",
+          "year": "2026",
+          "version": "control-v1"
+        },
+        "Q5": [
+          {
+            "global_id": "3jVfQlWajACA3M083XXgEN",
+            "name": "Walls : Basic Wall : Generic -Wood - 0.10 2"
+          }
+        ]
+      },
+      "Native IFC reference": {
+        "Q1": {
+          "value": 40.0,
+          "unit": "dB",
+          "metric": "Rw"
+        },
+        "Q2": {
+          "assembly": "CONTROL - Generic wood wall 0.10 m",
+          "construction": "wood"
+        },
+        "Q3": {
+          "source": "CONTROLLED SYNTHETIC RECORD",
+          "reference": "architecture-replication-control-wood-100"
+        },
+        "Q4": {
+          "method": "Synthetic controlled record; not an acoustic measurement",
+          "year": "2026",
+          "version": "control-v1"
+        },
+        "Q5": [
+          {
+            "global_id": "3jVfQlWajACA3M083XXgEN",
+            "name": "Walls : Basic Wall : Generic -Wood - 0.10 2",
+            "record_uri": "https://example.org/hft-acoustic-native/record/control-wood-100.json"
+          }
+        ]
+      },
+      "Proposed IFC-RDF": {
+        "Q1": {
+          "value": "40.0",
+          "unit": "dB",
+          "metric": "Rw"
+        },
+        "Q2": {
+          "assembly": "CONTROL - Generic wood wall 0.10 m",
+          "construction": "wood"
+        },
+        "Q3": {
+          "source": "CONTROLLED SYNTHETIC RECORD",
+          "reference": "architecture-replication-control-wood-100"
+        },
+        "Q4": {
+          "method": "Synthetic controlled record; not an acoustic measurement",
+          "year": "2026",
+          "version": "control-v1"
+        },
+        "Q5": [
+          {
+            "global_id": "3jVfQlWajACA3M083XXgEN",
+            "name": "Walls : Basic Wall : Generic -Wood - 0.10 2",
+            "mapping_status": "CONTROLLED_REFERENCE"
+          }
+        ]
+      }
+    }
+  }
+}

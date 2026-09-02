@@ -1,0 +1,28 @@
+{
+  "record_uri": "https://example.org/hft-acoustic-native/record/vabdat-310.json",
+  "record": {
+    "RecordIdentifier": "vabdat-310",
+    "AcousticMetric": "Rw",
+    "AcousticValue": 44.1,
+    "AcousticUnit": "dB",
+    "AssemblyDescription": "B_bGP12_frM75||iMW60_bGP12",
+    "ConstructionType": "metal frame construction (MFC)",
+    "TotalThickness_m": 0.1,
+    "TestArea_m2": 13.04,
+    "SpecimenLengthX_m": 4.0,
+    "SpecimenLengthY_m": 3.26,
+    "SurfaceMass_kg_m2": 20.2,
+    "MethodType": "Not explicitly specified in the VaBDat source used for this prototype",
+    "SourceType": "Bericht - vert. Flankenübertragung v. HTW",
+    "SourceReference": "Anhang, Luftschallmessung-Nr. M_25",
+    "DataYear": "2022",
+    "RecordVersion": "prototype-v1",
+    "ResponsibleAgent": "ift Rosenheim",
+    "SourceURI": "https://www.vabdat.de/BauteilKennzahl/view/310"
+  },
+  "provenance": {
+    "representation": "application-defined JSON external resource",
+    "source_uri": "https://www.vabdat.de/BauteilKennzahl/view/310",
+    "note": "IFC identifies the external resource; IFC does not define this JSON schema."
+  }
+}

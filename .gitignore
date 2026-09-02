@@ -1,0 +1,43 @@
+# Python environments
+.venv/
+venv/
+env/
+
+# Python caches and build artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+build/
+dist/
+*.egg-info/
+
+# Streamlit and local secrets
+.streamlit/secrets.toml
+.env
+.env.*
+!.env.example
+
+# Editors and operating systems
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Runtime output
+*.log
+
+# Temporary Git repair backups
+HEAD_BACKUP
+config_BACKUP
+index_BACKUP
+*_BACKUP
+*.tmp
+
+# Runtime/test outputs
+logs/
+test_output.txt

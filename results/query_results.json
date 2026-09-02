@@ -1,0 +1,107 @@
+{
+  "wall_global_id": "2qL6OSUnz6ZAzEOn1HxeD2",
+  "record_id": "vabdat-310",
+  "claim_scope": "External reference acoustic performance record; not an in-situ Bau 1 measurement.",
+  "initial_results": {
+    "Embedded IFC": {
+      "Q1": {
+        "value": 44.1,
+        "unit": "dB",
+        "metric": "Rw"
+      },
+      "Q2": {
+        "assembly": "B_bGP12_frM75||iMW60_bGP12",
+        "construction_type": "metal frame construction (MFC)",
+        "thickness_m": 0.1,
+        "test_area_m2": 13.04
+      },
+      "Q3": {
+        "responsible_agent": "ift Rosenheim",
+        "source_reference": "Anhang, Luftschallmessung-Nr. M_25",
+        "source_uri": "https://www.vabdat.de/BauteilKennzahl/view/310"
+      },
+      "Q4": {
+        "method": "Not explicitly specified in the VaBDat source used for this prototype",
+        "date_year": "2022",
+        "version": "prototype-v1"
+      },
+      "Q5": [
+        {
+          "global_id": "2qL6OSUnz6ZAzEOn1HxeD2",
+          "step_id": 1439505,
+          "name": "Walls : Walls_3OGArc01 : Walls_3OGArc01"
+        }
+      ]
+    },
+    "Native IFC reference": {
+      "Q1": {
+        "value": 44.1,
+        "unit": "dB",
+        "metric": "Rw"
+      },
+      "Q2": {
+        "assembly": "B_bGP12_frM75||iMW60_bGP12",
+        "construction_type": "metal frame construction (MFC)",
+        "thickness_m": 0.1,
+        "test_area_m2": 13.04
+      },
+      "Q3": {
+        "responsible_agent": "ift Rosenheim",
+        "source_reference": "Anhang, Luftschallmessung-Nr. M_25",
+        "source_uri": "https://www.vabdat.de/BauteilKennzahl/view/310"
+      },
+      "Q4": {
+        "method": "Not explicitly specified in the VaBDat source used for this prototype",
+        "date_year": "2022",
+        "version": "prototype-v1"
+      },
+      "Q5": [
+        {
+          "global_id": "2qL6OSUnz6ZAzEOn1HxeD2",
+          "step_id": 1439505,
+          "name": "Walls : Walls_3OGArc01 : Walls_3OGArc01",
+          "record_uri": "https://example.org/hft-acoustic-native/record/vabdat-310.json"
+        }
+      ]
+    },
+    "Proposed IFC-RDF": {
+      "Q1": {
+        "value": "44.1",
+        "unit": "dB",
+        "metric": "Rw"
+      },
+      "Q2": {
+        "assembly": "B_bGP12_frM75||iMW60_bGP12",
+        "construction_type": "metal frame construction (MFC)",
+        "thickness_m": "0.100",
+        "test_area_m2": "13.04"
+      },
+      "Q3": {
+        "responsible_agent": "ift Rosenheim",
+        "source_reference": "Anhang, Luftschallmessung-Nr. M_25",
+        "derived_from": [
+          "https://example.org/hft-acoustic/source/report-vabdat-310",
+          "https://www.vabdat.de/BauteilKennzahl/view/310"
+        ]
+      },
+      "Q4": {
+        "method": "Not explicitly specified in the VaBDat source used for this prototype",
+        "date_year": "2022",
+        "version": "prototype-v1"
+      },
+      "Q5": [
+        {
+          "global_id": "2qL6OSUnz6ZAzEOn1HxeD2",
+          "name": "Walls : Walls_3OGArc01 : Walls_3OGArc01",
+          "mapping_status": "AMBIGUOUS_REFERENCE_MATCH"
+        }
+      ]
+    }
+  },
+  "rdf_explicit_prov_predicates": [
+    "http://www.w3.org/ns/prov#wasAttributedTo",
+    "http://www.w3.org/ns/prov#wasDerivedFrom",
+    "http://www.w3.org/ns/prov#wasGeneratedBy"
+  ],
+  "source_method_warning": "The method type is not explicitly specified in the VaBDat source used for this pilot; the experiment reports that absence rather than inventing a method."
+}

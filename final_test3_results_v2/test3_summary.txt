@@ -1,0 +1,12 @@
+TEST 3 v2 — SEMANTIC ROBUSTNESS SUMMARY
+
+Source RDF record: https://example.org/hft-acoustic/record/vabdat-310
+Scenario agreement: 7/7
+
+Important interpretation:
+- This is a controlled scenario/decision-rule evaluation, not statistical validation of an acoustic-matching algorithm.
+- The real Bau 1 metal-stud case tests ambiguity from incomplete/non-equivalent assembly evidence.
+- The concrete wrong-link and no-candidate cases use actual IFC walls.
+- The positive, duplicate-candidate and semantic-staleness cases are explicitly controlled fixtures/mutations.
+- BROKEN means technical resolution failed; INVALID/AMBIGUOUS/STALE concern semantic correspondence.
+- No Rw value is predicted for any Bau 1 wall.

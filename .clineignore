@@ -1,0 +1,10 @@
+Node_modules/
+.git/
+Dist/
+Build/
+Out/
+.next/
+*.log
+*.lock
+Package-lock.json
+Yarn.lock

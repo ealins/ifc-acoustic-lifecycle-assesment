@@ -1,0 +1,13 @@
+{
+  "uri": "https://example.org/hft-acoustic/record/vabdat-310",
+  "identifier": "vabdat-310",
+  "assembly": "B_bGP12_frM75||iMW60_bGP12",
+  "construction_family": "metal_frame",
+  "total_thickness_m": 0.100,
+  "rw": 44.1,
+  "unit": "dB",
+  "source": "VaBDat Database",
+  "report_reference": "VaBDat-2024-001",
+  "year": 2024,
+  "available": true
+}

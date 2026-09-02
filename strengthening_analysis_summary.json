@@ -1,0 +1,22 @@
+{
+  "timestamp": "2026-08-22",
+  "real_walls_tested": 4,
+  "total_scenarios": 7,
+  "construction_families": [
+    "concrete",
+    "wood",
+    "metal_frame"
+  ],
+  "status_coverage": [
+    "UNMATCHED",
+    "ACCEPTABLE",
+    "MULTIPLE_CANDIDATES",
+    "INVALID",
+    "AMBIGUOUS",
+    "SEMANTICALLY_STALE",
+    "BROKEN"
+  ],
+  "sensitivity_analysis": "completed",
+  "architectural_decisions": 6,
+  "root_cause_categories": 7
+}

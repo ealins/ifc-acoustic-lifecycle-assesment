@@ -1,0 +1,5 @@
+approach,ifc_entities_added,ifc_single_value_properties_added,ifc_bytes_added
+Embedded IFC,20,18,1859
+Native IFC -> JSON,2,0,520
+Native IFC -> same RDF,2,0,858
+Custom IFC link -> RDF,5,3,707

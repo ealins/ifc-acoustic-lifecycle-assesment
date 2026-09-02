@@ -1,0 +1,15 @@
+{
+  "ifc": "/mnt/data/HFT_Bau1_hybrid_native_semantic.ifc",
+  "registry": "/mnt/data/vabdat_one_record_registry.ttl",
+  "checks": {
+    "native_ifc_document_reference_to_rdf_uri": true,
+    "hft_acoustic_link_present": true,
+    "mapping_series_uri_present": true,
+    "registry_record_exists": true,
+    "registry_record_identifier": "vabdat-310",
+    "no_AcousticRecordURI_in_hft_tail": true,
+    "no_MappingStatus_in_hft_tail": true,
+    "no_MappingBasis_in_hft_tail": true,
+    "overall_text_rdf_preflight_pass": true
+  }
+}

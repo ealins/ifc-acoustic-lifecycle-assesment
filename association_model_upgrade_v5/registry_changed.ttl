@@ -1,0 +1,96 @@
+@prefix ex:   <https://example.org/hft-acoustic/> .
+@prefix ac:   <https://example.org/hft-acoustic/vocab/> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix dct:  <http://purl.org/dc/terms/> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+# -------------------------------------------------------------------
+# ONE-RECORD PROTOTYPE ACOUSTIC REGISTRY
+# Source: VaBDat component 346 / acoustic dataset 310
+#
+# NOTE:
+# ac:* terms are intentionally local prototype terms.
+# They can later be mapped to the selected CEN/TR 18180:2025
+# identifiers/definitions without changing this record's stable URI.
+# -------------------------------------------------------------------
+
+<https://example.org/hft-acoustic/record/vabdat-310>
+    a ac:AcousticPerformanceRecord, prov:Entity ;
+    dct:identifier "vabdat-310" ;
+    dct:title "Reference acoustic record for VaBDat component B_bGP12_frM75||iMW60_bGP12" ;
+
+    ac:weightedSoundReductionIndex "45.0"^^xsd:decimal ;
+    ac:acousticUnit "dB" ;
+
+    ac:describesComponent <https://example.org/hft-acoustic/component/vabdat-346> ;
+    ac:testArea_m2 "13.04"^^xsd:decimal ;
+    ac:specimenLengthX_m "4.0"^^xsd:decimal ;
+    ac:specimenLengthY_m "3.26"^^xsd:decimal ;
+    ac:surfaceMass_kg_m2 "20.2"^^xsd:decimal ;
+
+    ac:dataYear "2022"^^xsd:gYear ;
+    ac:sourceOrganisation <https://example.org/hft-acoustic/agent/ift-rosenheim> ;
+    ac:sourceReference "Anhang, Luftschallmessung-Nr. M_25" ;
+    ac:sourceType "Bericht - vert. Flankenübertragung v. HTW" ;
+    ac:sourceNote "VaBDat notes that the origin of the weighted and frequency-dependent sound reduction values is not specified in the report appendix." ;
+
+    prov:wasDerivedFrom
+        <https://www.vabdat.de/BauteilKennzahl/view/310>,
+        <https://example.org/hft-acoustic/source/report-vabdat-310> ;
+    prov:wasGeneratedBy <https://example.org/hft-acoustic/activity/registry-extraction-2026-08-18> .
+
+<https://example.org/hft-acoustic/component/vabdat-346>
+    a ac:WallAssembly, prov:Entity ;
+    dct:identifier "vabdat-component-346" ;
+    dct:title "B_bGP12_frM75||iMW60_bGP12" ;
+    ac:intendedUse "Interior wall" ;
+    ac:constructionType "metal frame construction (MFC)" ;
+    ac:totalThickness_m "0.100"^^xsd:decimal ;
+    ac:hasLayer
+        <https://example.org/hft-acoustic/layer/vabdat-346-1>,
+        <https://example.org/hft-acoustic/layer/vabdat-346-2>,
+        <https://example.org/hft-acoustic/layer/vabdat-346-3> ;
+    prov:wasDerivedFrom <https://www.vabdat.de/Bauteil/view/346> .
+
+<https://example.org/hft-acoustic/layer/vabdat-346-1>
+    a ac:MaterialLayer ;
+    ac:layerPosition 1 ;
+    ac:layerName "Bauplatte GKB" ;
+    ac:materialCategory "boards (b)" ;
+    ac:thickness_m "0.0125"^^xsd:decimal ;
+    ac:isLoadBearing false .
+
+<https://example.org/hft-acoustic/layer/vabdat-346-2>
+    a ac:MaterialLayer ;
+    ac:layerPosition 2 ;
+    ac:layerName "Metallständer CW 75 mit 60mm Mineralfaser-Dämmung" ;
+    ac:materialCategory "framework (fr)" ;
+    ac:thickness_m "0.075"^^xsd:decimal ;
+    ac:isLoadBearing true .
+
+<https://example.org/hft-acoustic/layer/vabdat-346-3>
+    a ac:MaterialLayer ;
+    ac:layerPosition 3 ;
+    ac:layerName "Bauplatte GKB" ;
+    ac:materialCategory "boards (b)" ;
+    ac:thickness_m "0.0125"^^xsd:decimal ;
+    ac:isLoadBearing false .
+
+<https://example.org/hft-acoustic/source/report-vabdat-310>
+    a prov:Entity ;
+    dct:title "VaBDat source report associated with acoustic dataset 310" ;
+    dct:identifier "Anhang, Luftschallmessung-Nr. M_25" ;
+    dct:date "2022"^^xsd:gYear ;
+    ac:sourceOrganisation <https://example.org/hft-acoustic/agent/ift-rosenheim> .
+
+<https://example.org/hft-acoustic/agent/ift-rosenheim>
+    a prov:Agent ;
+    dct:title "ift Rosenheim" .
+
+<https://example.org/hft-acoustic/activity/registry-extraction-2026-08-18>
+    a prov:Activity ;
+    dct:description "Transformation of selected VaBDat public record metadata into the thesis prototype RDF registry." ;
+    prov:used
+        <https://www.vabdat.de/Bauteil/view/346>,
+        <https://www.vabdat.de/BauteilKennzahl/view/310> ;
+    prov:endedAtTime "2026-08-18T00:00:00+02:00"^^xsd:dateTime .

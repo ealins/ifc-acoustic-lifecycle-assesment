@@ -1,0 +1,16 @@
+approach,scenario,ifc_modified,external_record_modified,retrieval_questions_successful,retrieval_questions_total,link_status,note
+Embedded IFC,Initial creation,True,False,5,5,N/A,Initial controlled baseline representation.
+Native IFC reference,Initial creation,True,True,5,5,VALID,Initial controlled baseline representation.
+Proposed IFC-RDF,Initial creation,True,True,5,5,VALID,Initial controlled baseline representation.
+Embedded IFC,Acoustic-value update,True,False,5,5,N/A,Controlled update 44.1 -> 45.0 dB required editing the IFC.
+Native IFC reference,Acoustic-value update,False,True,5,5,VALID,External JSON changed to 45.0 dB; IFC remained unchanged.
+Proposed IFC-RDF,Acoustic-value update,False,True,5,5,VALID,External RDF changed to 45.0 dB; IFC remained unchanged.
+Embedded IFC,Provenance/source update,True,False,5,5,N/A,Source reference and record version were changed inside IFC.
+Native IFC reference,Provenance/source update,False,True,5,5,VALID,External JSON source/version changed; IFC remained unchanged.
+Proposed IFC-RDF,Provenance/source update,False,True,5,5,VALID,External RDF source/version changed; IFC remained unchanged.
+Embedded IFC,Broken-link case,False,False,5,5,N/A,Not applicable: no external acoustic link exists in the embedded arm.
+Native IFC reference,Broken-link case,True,False,1,5,BROKEN,Document Location intentionally changed to a nonexistent URI.
+Proposed IFC-RDF,Broken-link case,True,False,1,5,BROKEN,Pset_AcousticLink URI intentionally changed to an absent RDF resource.
+Embedded IFC,Wall-geometry change,True,False,5,5,N/A,Wall local X placement shifted +0.1 m (-26.800670874450784 -> -26.700670874450783); acoustic record not edited.
+Native IFC reference,Wall-geometry change,True,False,5,5,VALID,Wall local X placement shifted +0.1 m (-26.800670874450784 -> -26.700670874450783); acoustic record not edited.
+Proposed IFC-RDF,Wall-geometry change,True,False,5,5,VALID,Wall local X placement shifted +0.1 m (-26.800670874450784 -> -26.700670874450783); acoustic record not edited.

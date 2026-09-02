@@ -1,0 +1,49 @@
+case_id,wall_global_id,approach,scenario,ifc_modified,external_record_modified,retrieval_questions_successful,retrieval_questions_total,link_status
+pilot_metal_stud,2qL6OSUnz6ZAzEOn1HxeD2,Embedded IFC,Initial creation,True,False,5,5,N/A
+pilot_metal_stud,2qL6OSUnz6ZAzEOn1HxeD2,Native IFC reference,Initial creation,True,True,5,5,VALID
+pilot_metal_stud,2qL6OSUnz6ZAzEOn1HxeD2,Proposed IFC-RDF,Initial creation,True,True,5,5,VALID
+pilot_metal_stud,2qL6OSUnz6ZAzEOn1HxeD2,Embedded IFC,Acoustic-value update,True,False,5,5,N/A
+pilot_metal_stud,2qL6OSUnz6ZAzEOn1HxeD2,Native IFC reference,Acoustic-value update,False,True,5,5,VALID
+pilot_metal_stud,2qL6OSUnz6ZAzEOn1HxeD2,Proposed IFC-RDF,Acoustic-value update,False,True,5,5,VALID
+pilot_metal_stud,2qL6OSUnz6ZAzEOn1HxeD2,Embedded IFC,Provenance/source update,True,False,5,5,N/A
+pilot_metal_stud,2qL6OSUnz6ZAzEOn1HxeD2,Native IFC reference,Provenance/source update,False,True,5,5,VALID
+pilot_metal_stud,2qL6OSUnz6ZAzEOn1HxeD2,Proposed IFC-RDF,Provenance/source update,False,True,5,5,VALID
+pilot_metal_stud,2qL6OSUnz6ZAzEOn1HxeD2,Embedded IFC,Broken-link case,False,False,5,5,N/A
+pilot_metal_stud,2qL6OSUnz6ZAzEOn1HxeD2,Native IFC reference,Broken-link case,True,False,1,5,BROKEN
+pilot_metal_stud,2qL6OSUnz6ZAzEOn1HxeD2,Proposed IFC-RDF,Broken-link case,True,False,1,5,BROKEN
+control_concrete_150,0wnAJp1nDEywwo7Vo$xbfn,Embedded IFC,Initial creation,True,False,5,5,N/A
+control_concrete_150,0wnAJp1nDEywwo7Vo$xbfn,Native IFC reference,Initial creation,True,True,5,5,VALID
+control_concrete_150,0wnAJp1nDEywwo7Vo$xbfn,Proposed IFC-RDF,Initial creation,True,True,5,5,VALID
+control_concrete_150,0wnAJp1nDEywwo7Vo$xbfn,Embedded IFC,Acoustic-value update,True,False,5,5,N/A
+control_concrete_150,0wnAJp1nDEywwo7Vo$xbfn,Native IFC reference,Acoustic-value update,False,True,5,5,VALID
+control_concrete_150,0wnAJp1nDEywwo7Vo$xbfn,Proposed IFC-RDF,Acoustic-value update,False,True,5,5,VALID
+control_concrete_150,0wnAJp1nDEywwo7Vo$xbfn,Embedded IFC,Provenance/source update,True,False,5,5,N/A
+control_concrete_150,0wnAJp1nDEywwo7Vo$xbfn,Native IFC reference,Provenance/source update,False,True,5,5,VALID
+control_concrete_150,0wnAJp1nDEywwo7Vo$xbfn,Proposed IFC-RDF,Provenance/source update,False,True,5,5,VALID
+control_concrete_150,0wnAJp1nDEywwo7Vo$xbfn,Embedded IFC,Broken-link case,False,False,5,5,N/A
+control_concrete_150,0wnAJp1nDEywwo7Vo$xbfn,Native IFC reference,Broken-link case,True,False,1,5,BROKEN
+control_concrete_150,0wnAJp1nDEywwo7Vo$xbfn,Proposed IFC-RDF,Broken-link case,True,False,1,5,BROKEN
+control_concrete_300,1You9r7r15Ax77pHYWcjAi,Embedded IFC,Initial creation,True,False,5,5,N/A
+control_concrete_300,1You9r7r15Ax77pHYWcjAi,Native IFC reference,Initial creation,True,True,5,5,VALID
+control_concrete_300,1You9r7r15Ax77pHYWcjAi,Proposed IFC-RDF,Initial creation,True,True,5,5,VALID
+control_concrete_300,1You9r7r15Ax77pHYWcjAi,Embedded IFC,Acoustic-value update,True,False,5,5,N/A
+control_concrete_300,1You9r7r15Ax77pHYWcjAi,Native IFC reference,Acoustic-value update,False,True,5,5,VALID
+control_concrete_300,1You9r7r15Ax77pHYWcjAi,Proposed IFC-RDF,Acoustic-value update,False,True,5,5,VALID
+control_concrete_300,1You9r7r15Ax77pHYWcjAi,Embedded IFC,Provenance/source update,True,False,5,5,N/A
+control_concrete_300,1You9r7r15Ax77pHYWcjAi,Native IFC reference,Provenance/source update,False,True,5,5,VALID
+control_concrete_300,1You9r7r15Ax77pHYWcjAi,Proposed IFC-RDF,Provenance/source update,False,True,5,5,VALID
+control_concrete_300,1You9r7r15Ax77pHYWcjAi,Embedded IFC,Broken-link case,False,False,5,5,N/A
+control_concrete_300,1You9r7r15Ax77pHYWcjAi,Native IFC reference,Broken-link case,True,False,1,5,BROKEN
+control_concrete_300,1You9r7r15Ax77pHYWcjAi,Proposed IFC-RDF,Broken-link case,True,False,1,5,BROKEN
+control_wood_100,3jVfQlWajACA3M083XXgEN,Embedded IFC,Initial creation,True,False,5,5,N/A
+control_wood_100,3jVfQlWajACA3M083XXgEN,Native IFC reference,Initial creation,True,True,5,5,VALID
+control_wood_100,3jVfQlWajACA3M083XXgEN,Proposed IFC-RDF,Initial creation,True,True,5,5,VALID
+control_wood_100,3jVfQlWajACA3M083XXgEN,Embedded IFC,Acoustic-value update,True,False,5,5,N/A
+control_wood_100,3jVfQlWajACA3M083XXgEN,Native IFC reference,Acoustic-value update,False,True,5,5,VALID
+control_wood_100,3jVfQlWajACA3M083XXgEN,Proposed IFC-RDF,Acoustic-value update,False,True,5,5,VALID
+control_wood_100,3jVfQlWajACA3M083XXgEN,Embedded IFC,Provenance/source update,True,False,5,5,N/A
+control_wood_100,3jVfQlWajACA3M083XXgEN,Native IFC reference,Provenance/source update,False,True,5,5,VALID
+control_wood_100,3jVfQlWajACA3M083XXgEN,Proposed IFC-RDF,Provenance/source update,False,True,5,5,VALID
+control_wood_100,3jVfQlWajACA3M083XXgEN,Embedded IFC,Broken-link case,False,False,5,5,N/A
+control_wood_100,3jVfQlWajACA3M083XXgEN,Native IFC reference,Broken-link case,True,False,1,5,BROKEN
+control_wood_100,3jVfQlWajACA3M083XXgEN,Proposed IFC-RDF,Broken-link case,True,False,1,5,BROKEN
