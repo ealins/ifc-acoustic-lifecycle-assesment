@@ -1,4 +1,0 @@
-approach,ifc_file,external_record_file,ifc_bytes,ifc_bytes_added_vs_original,ifc_entities_added_vs_original,ifc_single_value_properties_added,initial_retrieval_success,initial_retrieval_total,link_status,common_record_fields_represented,source_method_explicitly_available,explicit_PROV_relation_types_from_record
-Embedded IFC,HFT_Bau1_baseline_embedded.ifc,,165175002,1859,20,18,5,5,N/A,18,False,0
-Native IFC reference,HFT_Bau1_baseline_native_reference.ifc,native_external_record_v1.json,165173663,520,2,0,5,5,VALID,18,False,0
-Proposed IFC–RDF,HFT_Bau1_baseline_proposed_ifc_rdf.ifc,acoustic_registry_v1.ttl,165173850,707,5,3,5,5,VALID,18,False,3

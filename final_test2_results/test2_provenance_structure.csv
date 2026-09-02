@@ -1,5 +1,0 @@
-approach,representation,explicit_prov_o_predicates,provenance_fields_present,note
-Embedded IFC,IFC property-set fields (Pset_AcousticEmbedded),0,6,The selected pilot embeds provenance/context as IFC property values rather than graph relations.
-Native IFC -> JSON,application-defined JSON key/value structure,0,6,"Provenance can be represented, but its semantics are defined by the application-specific JSON schema used in this experiment."
-Native IFC -> same RDF,RDF graph with explicit PROV-O relationships,3,N/A,"The RDF registry explicitly distinguishes attribution, derivation and generation relationships."
-Custom IFC link -> RDF,RDF graph with explicit PROV-O relationships,3,N/A,"The RDF registry explicitly distinguishes attribution, derivation and generation relationships."

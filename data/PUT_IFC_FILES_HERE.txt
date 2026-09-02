@@ -1,6 +1,0 @@
-Copy these four IFC files into this data folder:
-
-HFT_Bau1_2026.02.18.ifc
-HFT_Bau1_baseline_embedded.ifc
-HFT_Bau1_baseline_native_reference.ifc
-HFT_Bau1_baseline_proposed_ifc_rdf.ifc

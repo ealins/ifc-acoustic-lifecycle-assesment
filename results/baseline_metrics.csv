@@ -1,4 +1,0 @@
-approach,initial_retrieval_success,initial_retrieval_total,link_status,ifc_bytes_added,ifc_entities_added,ifc_single_value_properties_added
-Embedded IFC,5,5,N/A,1859,20,18
-Native IFC reference,5,5,VALID,520,2,0
-Proposed IFC-RDF,5,5,VALID,707,5,3
