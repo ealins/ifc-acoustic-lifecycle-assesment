@@ -1,0 +1,311 @@
+{
+  "source_record": {
+    "uri": "https://example.org/hft-acoustic/record/vabdat-310",
+    "identifier": "vabdat-310",
+    "assembly": "B_bGP12_frM75||iMW60_bGP12",
+    "construction": "metal frame construction (MFC)",
+    "construction_family": "metal_frame",
+    "total_thickness_m": 0.1,
+    "layer_names": [
+      "Bauplatte GKB",
+      "Metallständer CW 75 mit 60mm Mineralfaser-Dämmung",
+      "Bauplatte GKB"
+    ],
+    "layer_categories": [
+      "boards (b)",
+      "framework (fr)",
+      "boards (b)"
+    ]
+  },
+  "actual_wall_signatures": {
+    "pilot_metal_stud": {
+      "source": "ACTUAL_IFC",
+      "global_id": "2qL6OSUnz6ZAzEOn1HxeD2",
+      "name": "Walls : Walls_3OGArc01 : Walls_3OGArc01",
+      "type_name": "Walls : Walls_3OGArc01 : Walls_3OGArc01",
+      "construction_family": "metal_frame",
+      "total_thickness_m": 0.285,
+      "material_names": [
+        "Metal Stud Layer"
+      ],
+      "evidence_text": "Walls : Walls_3OGArc01 : Walls_3OGArc01 | Walls_3OGArc01:Walls_3OGArc01 | Walls : Walls_3OGArc01 : Walls_3OGArc01 | Metal Stud Layer"
+    },
+    "concrete_150": {
+      "source": "ACTUAL_IFC",
+      "global_id": "0wnAJp1nDEywwo7Vo$xbfn",
+      "name": "Walls : Basic Wall : Generic - Concrete - 0.15",
+      "type_name": "Walls : Basic Wall : Generic - Concrete - 0.15",
+      "construction_family": "concrete",
+      "total_thickness_m": 0.15,
+      "material_names": [
+        "Concrete, Cast In Situ",
+        "Concrete"
+      ],
+      "evidence_text": "Walls : Basic Wall : Generic - Concrete - 0.15 | Basic Wall:Generic - Concrete - 0.15 | Walls : Basic Wall : Generic - Concrete - 0.15 | Concrete, Cast In Situ | Concrete"
+    },
+    "concrete_300": {
+      "source": "ACTUAL_IFC",
+      "global_id": "1You9r7r15Ax77pHYWcjAi",
+      "name": "Walls : Basic Wall : Generic - Concrete - 0.30",
+      "type_name": "Walls : Basic Wall : Generic - Concrete - 0.30",
+      "construction_family": "concrete",
+      "total_thickness_m": 0.3,
+      "material_names": [
+        "Paint - White Lining",
+        "Paint",
+        "Concrete, Cast In Situ",
+        "Concrete"
+      ],
+      "evidence_text": "Walls : Basic Wall : Generic - Concrete - 0.30 | Basic Wall:Generic - Concrete - 0.30 | Walls : Basic Wall : Generic - Concrete - 0.30 | Paint - White Lining | Paint | Concrete, Cast In Situ | Concrete"
+    },
+    "wood_100": {
+      "source": "ACTUAL_IFC",
+      "global_id": "3jVfQlWajACA3M083XXgEN",
+      "name": "Walls : Basic Wall : Generic -Wood - 0.10 2",
+      "type_name": "Walls : Basic Wall : Generic -Wood - 0.10 2",
+      "construction_family": "wood",
+      "total_thickness_m": 0.1,
+      "material_names": [
+        "Cerezo",
+        "Madera"
+      ],
+      "evidence_text": "Walls : Basic Wall : Generic -Wood - 0.10 2 | Basic Wall:Generic -Wood - 0.10 2 | Walls : Basic Wall : Generic -Wood - 0.10 2 | Cerezo | Madera"
+    }
+  },
+  "scenarios": [
+    {
+      "case_id": "controlled_acceptable",
+      "case_kind": "CONTROLLED_POSITIVE_FIXTURE",
+      "ground_truth": "ACCEPTABLE",
+      "observed_status": "ACCEPTABLE",
+      "scenario_pass": true,
+      "wall_signature": {
+        "source": "CONTROLLED_FIXTURE",
+        "global_id": "CONTROLLED-ACCEPTABLE-001",
+        "name": "Controlled exact assembly fixture",
+        "type_name": "Controlled fixture",
+        "construction_family": "metal_frame",
+        "total_thickness_m": 0.1,
+        "material_names": [
+          "Bauplatte GKB",
+          "Metallständer CW 75 mit 60mm Mineralfaser-Dämmung",
+          "Bauplatte GKB"
+        ],
+        "evidence_text": "Bauplatte GKB | Metallständer CW 75 mit 60mm Mineralfaser-Dämmung | Bauplatte GKB"
+      },
+      "prior_wall_signature": null,
+      "linked_uri": "https://example.org/hft-acoustic/record/vabdat-310",
+      "decision_metrics": {
+        "linked_uri": "https://example.org/hft-acoustic/record/vabdat-310",
+        "technical_resolution": true,
+        "wall_family": "metal_frame",
+        "record_family": "metal_frame",
+        "wall_thickness_m": 0.1,
+        "record_thickness_m": 0.1,
+        "thickness_delta_m": 0.0,
+        "layer_token_overlap": 0.7142857142857143
+      },
+      "rationale": "Construction family agrees and both thickness and material/layer evidence are compatible within the controlled criteria."
+    },
+    {
+      "case_id": "actual_metal_stud_ambiguous",
+      "case_kind": "ACTUAL_IFC_WALL",
+      "ground_truth": "AMBIGUOUS",
+      "observed_status": "AMBIGUOUS",
+      "scenario_pass": true,
+      "wall_signature": {
+        "source": "ACTUAL_IFC",
+        "global_id": "2qL6OSUnz6ZAzEOn1HxeD2",
+        "name": "Walls : Walls_3OGArc01 : Walls_3OGArc01",
+        "type_name": "Walls : Walls_3OGArc01 : Walls_3OGArc01",
+        "construction_family": "metal_frame",
+        "total_thickness_m": 0.285,
+        "material_names": [
+          "Metal Stud Layer"
+        ],
+        "evidence_text": "Walls : Walls_3OGArc01 : Walls_3OGArc01 | Walls_3OGArc01:Walls_3OGArc01 | Walls : Walls_3OGArc01 : Walls_3OGArc01 | Metal Stud Layer"
+      },
+      "prior_wall_signature": null,
+      "linked_uri": "https://example.org/hft-acoustic/record/vabdat-310",
+      "decision_metrics": {
+        "linked_uri": "https://example.org/hft-acoustic/record/vabdat-310",
+        "technical_resolution": true,
+        "wall_family": "metal_frame",
+        "record_family": "metal_frame",
+        "wall_thickness_m": 0.285,
+        "record_thickness_m": 0.1,
+        "thickness_delta_m": 0.18499999999999997,
+        "layer_token_overlap": 0.0
+      },
+      "rationale": "total-thickness difference is 0.185 m (> 0.020 m tolerance); IFC material/layer evidence is insufficient to reproduce the tested assembly."
+    },
+    {
+      "case_id": "actual_concrete_wrong_link",
+      "case_kind": "ACTUAL_IFC_WALL_INTENTIONAL_WRONG_REFERENCE",
+      "ground_truth": "INVALID",
+      "observed_status": "INVALID",
+      "scenario_pass": true,
+      "wall_signature": {
+        "source": "ACTUAL_IFC",
+        "global_id": "0wnAJp1nDEywwo7Vo$xbfn",
+        "name": "Walls : Basic Wall : Generic - Concrete - 0.15",
+        "type_name": "Walls : Basic Wall : Generic - Concrete - 0.15",
+        "construction_family": "concrete",
+        "total_thickness_m": 0.15,
+        "material_names": [
+          "Concrete, Cast In Situ",
+          "Concrete"
+        ],
+        "evidence_text": "Walls : Basic Wall : Generic - Concrete - 0.15 | Basic Wall:Generic - Concrete - 0.15 | Walls : Basic Wall : Generic - Concrete - 0.15 | Concrete, Cast In Situ | Concrete"
+      },
+      "prior_wall_signature": null,
+      "linked_uri": "https://example.org/hft-acoustic/record/vabdat-310",
+      "decision_metrics": {
+        "linked_uri": "https://example.org/hft-acoustic/record/vabdat-310",
+        "technical_resolution": true,
+        "wall_family": "concrete",
+        "record_family": "metal_frame",
+        "wall_thickness_m": 0.15,
+        "record_thickness_m": 0.1,
+        "thickness_delta_m": null,
+        "layer_token_overlap": 0.0
+      },
+      "rationale": "Construction-family mismatch: IFC wall=concrete, external record=metal_frame."
+    },
+    {
+      "case_id": "actual_concrete_no_candidate",
+      "case_kind": "ACTUAL_IFC_WALL_CANDIDATE_DISCOVERY",
+      "ground_truth": "UNMATCHED",
+      "observed_status": "UNMATCHED",
+      "scenario_pass": true,
+      "wall_signature": {
+        "source": "ACTUAL_IFC",
+        "global_id": "1You9r7r15Ax77pHYWcjAi",
+        "name": "Walls : Basic Wall : Generic - Concrete - 0.30",
+        "type_name": "Walls : Basic Wall : Generic - Concrete - 0.30",
+        "construction_family": "concrete",
+        "total_thickness_m": 0.3,
+        "material_names": [
+          "Paint - White Lining",
+          "Paint",
+          "Concrete, Cast In Situ",
+          "Concrete"
+        ],
+        "evidence_text": "Walls : Basic Wall : Generic - Concrete - 0.30 | Basic Wall:Generic - Concrete - 0.30 | Walls : Basic Wall : Generic - Concrete - 0.30 | Paint - White Lining | Paint | Concrete, Cast In Situ | Concrete"
+      },
+      "prior_wall_signature": null,
+      "linked_uri": null,
+      "decision_metrics": {
+        "candidate_count": 0,
+        "candidate_uris": []
+      },
+      "rationale": "No external record with the same detectable construction family is available as a candidate."
+    },
+    {
+      "case_id": "controlled_multiple_candidates",
+      "case_kind": "CONTROLLED_REGISTRY_EXTENSION",
+      "ground_truth": "MULTIPLE_CANDIDATES",
+      "observed_status": "MULTIPLE_CANDIDATES",
+      "scenario_pass": true,
+      "wall_signature": {
+        "source": "CONTROLLED_FIXTURE",
+        "global_id": "CONTROLLED-ACCEPTABLE-001",
+        "name": "Controlled exact assembly fixture",
+        "type_name": "Controlled fixture",
+        "construction_family": "metal_frame",
+        "total_thickness_m": 0.1,
+        "material_names": [
+          "Bauplatte GKB",
+          "Metallständer CW 75 mit 60mm Mineralfaser-Dämmung",
+          "Bauplatte GKB"
+        ],
+        "evidence_text": "Bauplatte GKB | Metallständer CW 75 mit 60mm Mineralfaser-Dämmung | Bauplatte GKB"
+      },
+      "prior_wall_signature": null,
+      "linked_uri": null,
+      "decision_metrics": {
+        "candidate_count": 2,
+        "candidate_uris": [
+          "https://example.org/hft-acoustic/record/vabdat-310",
+          "https://example.org/hft-acoustic/record/control-vabdat-310-near-duplicate"
+        ]
+      },
+      "rationale": "More than one external record passes the coarse construction-family candidate filter; additional evidence is required for unique selection."
+    },
+    {
+      "case_id": "external_record_unavailable",
+      "case_kind": "CONTROLLED_RESOURCE_FAILURE",
+      "ground_truth": "BROKEN",
+      "observed_status": "BROKEN",
+      "scenario_pass": true,
+      "wall_signature": {
+        "source": "ACTUAL_IFC",
+        "global_id": "2qL6OSUnz6ZAzEOn1HxeD2",
+        "name": "Walls : Walls_3OGArc01 : Walls_3OGArc01",
+        "type_name": "Walls : Walls_3OGArc01 : Walls_3OGArc01",
+        "construction_family": "metal_frame",
+        "total_thickness_m": 0.285,
+        "material_names": [
+          "Metal Stud Layer"
+        ],
+        "evidence_text": "Walls : Walls_3OGArc01 : Walls_3OGArc01 | Walls_3OGArc01:Walls_3OGArc01 | Walls : Walls_3OGArc01 : Walls_3OGArc01 | Metal Stud Layer"
+      },
+      "prior_wall_signature": null,
+      "linked_uri": "https://example.org/hft-acoustic/record/vabdat-310",
+      "decision_metrics": {
+        "linked_uri": "https://example.org/hft-acoustic/record/vabdat-310",
+        "technical_resolution": false
+      },
+      "rationale": "The IFC/reference identifier is retained, but the referenced external record is unavailable in the registry."
+    },
+    {
+      "case_id": "controlled_semantic_staleness",
+      "case_kind": "CONTROLLED_MODEL_VERSION_CHANGE",
+      "ground_truth": "SEMANTICALLY_STALE",
+      "observed_status": "SEMANTICALLY_STALE",
+      "scenario_pass": true,
+      "wall_signature": {
+        "source": "CONTROLLED_MODEL_VERSION_T1",
+        "global_id": "CONTROLLED-ACCEPTABLE-001",
+        "name": "Controlled same wall after construction-family change",
+        "type_name": "Controlled fixture",
+        "construction_family": "concrete",
+        "total_thickness_m": 0.1,
+        "material_names": [
+          "Concrete"
+        ],
+        "evidence_text": "Controlled model revision: construction changed to concrete"
+      },
+      "prior_wall_signature": {
+        "source": "CONTROLLED_FIXTURE",
+        "global_id": "CONTROLLED-ACCEPTABLE-001",
+        "name": "Controlled exact assembly fixture",
+        "type_name": "Controlled fixture",
+        "construction_family": "metal_frame",
+        "total_thickness_m": 0.1,
+        "material_names": [
+          "Bauplatte GKB",
+          "Metallständer CW 75 mit 60mm Mineralfaser-Dämmung",
+          "Bauplatte GKB"
+        ],
+        "evidence_text": "Bauplatte GKB | Metallständer CW 75 mit 60mm Mineralfaser-Dämmung | Bauplatte GKB"
+      },
+      "linked_uri": "https://example.org/hft-acoustic/record/vabdat-310",
+      "decision_metrics": {
+        "linked_uri": "https://example.org/hft-acoustic/record/vabdat-310",
+        "technical_resolution": true,
+        "wall_family": "concrete",
+        "record_family": "metal_frame",
+        "wall_thickness_m": 0.1,
+        "record_thickness_m": 0.1,
+        "thickness_delta_m": null,
+        "layer_token_overlap": 0.0,
+        "prior_correspondence_status": "ACCEPTABLE",
+        "prior_correspondence_reason": "Construction family agrees and both thickness and material/layer evidence are compatible within the controlled criteria.",
+        "prior_wall_family": "metal_frame",
+        "prior_wall_thickness_m": 0.1
+      },
+      "rationale": "The same identifier still resolves, but an association that was acceptable in the prior model state is incompatible with the current wall state."
+    }
+  ]
+}

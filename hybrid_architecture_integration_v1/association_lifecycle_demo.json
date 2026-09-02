@@ -1,0 +1,54 @@
+{
+  "current": [
+    {
+      "series": "https://example.org/hft-acoustic/mapping/series/2qL6OSUnz6ZAzEOn1HxeD2--vabdat-310",
+      "ifc_global_id": "2qL6OSUnz6ZAzEOn1HxeD2",
+      "record_uri": "https://example.org/hft-acoustic/record/vabdat-310",
+      "status": "AMBIGUOUS",
+      "ifc_model_version": "bau1-2026-02-18",
+      "record_version": "prototype-v2",
+      "technical_resolution": "true",
+      "requires_review": "true",
+      "rationale": "total-thickness difference 0.185 m exceeds 0.020 m tolerance.",
+      "assertion": "https://example.org/hft-acoustic/mapping/assertion/2qL6OSUnz6ZAzEOn1HxeD2--vabdat-310-r4"
+    }
+  ],
+  "history": [
+    {
+      "assertion": "https://example.org/hft-acoustic/mapping/assertion/2qL6OSUnz6ZAzEOn1HxeD2--vabdat-310-r1",
+      "status": "AMBIGUOUS",
+      "model_version": "bau1-2026-02-18",
+      "record_version": "prototype-v1",
+      "assessed_at": "2026-08-19T00:00:00+02:00",
+      "rationale": "total-thickness difference 0.185 m exceeds 0.020 m tolerance.",
+      "revision_of": ""
+    },
+    {
+      "assertion": "https://example.org/hft-acoustic/mapping/assertion/2qL6OSUnz6ZAzEOn1HxeD2--vabdat-310-r2",
+      "status": "AMBIGUOUS",
+      "model_version": "bau1-2026-02-18",
+      "record_version": "prototype-v2",
+      "assessed_at": "2026-08-19T00:10:00+02:00",
+      "rationale": "total-thickness difference 0.185 m exceeds 0.020 m tolerance.",
+      "revision_of": "https://example.org/hft-acoustic/mapping/assertion/2qL6OSUnz6ZAzEOn1HxeD2--vabdat-310-r1"
+    },
+    {
+      "assertion": "https://example.org/hft-acoustic/mapping/assertion/2qL6OSUnz6ZAzEOn1HxeD2--vabdat-310-r3",
+      "status": "BROKEN",
+      "model_version": "bau1-2026-02-18",
+      "record_version": "prototype-v2",
+      "assessed_at": "2026-08-19T00:20:00+02:00",
+      "rationale": "The IFC-side identifier is retained, but the referenced external acoustic record is unavailable.",
+      "revision_of": "https://example.org/hft-acoustic/mapping/assertion/2qL6OSUnz6ZAzEOn1HxeD2--vabdat-310-r2"
+    },
+    {
+      "assertion": "https://example.org/hft-acoustic/mapping/assertion/2qL6OSUnz6ZAzEOn1HxeD2--vabdat-310-r4",
+      "status": "AMBIGUOUS",
+      "model_version": "bau1-2026-02-18",
+      "record_version": "prototype-v2",
+      "assessed_at": "2026-08-19T00:30:00+02:00",
+      "rationale": "total-thickness difference 0.185 m exceeds 0.020 m tolerance.",
+      "revision_of": "https://example.org/hft-acoustic/mapping/assertion/2qL6OSUnz6ZAzEOn1HxeD2--vabdat-310-r3"
+    }
+  ]
+}

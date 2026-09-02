@@ -1,0 +1,13 @@
+case_id,wall_global_id,wall_name,record_scope,approach,initial_retrieval_success,initial_retrieval_total,link_status,ifc_entities_added,ifc_single_value_properties_added,ifc_bytes_added
+pilot_metal_stud,2qL6OSUnz6ZAzEOn1HxeD2,Walls : Walls_3OGArc01 : Walls_3OGArc01,REAL_SOURCE_REFERENCE,Embedded IFC,5,5,N/A,20,18,1832
+pilot_metal_stud,2qL6OSUnz6ZAzEOn1HxeD2,Walls : Walls_3OGArc01 : Walls_3OGArc01,REAL_SOURCE_REFERENCE,Native IFC reference,5,5,VALID,2,0,422
+pilot_metal_stud,2qL6OSUnz6ZAzEOn1HxeD2,Walls : Walls_3OGArc01 : Walls_3OGArc01,REAL_SOURCE_REFERENCE,Proposed IFC-RDF,5,5,VALID,5,3,606
+control_concrete_150,0wnAJp1nDEywwo7Vo$xbfn,Walls : Basic Wall : Generic - Concrete - 0.15,SYNTHETIC_CONTROL,Embedded IFC,5,5,N/A,20,18,1826
+control_concrete_150,0wnAJp1nDEywwo7Vo$xbfn,Walls : Basic Wall : Generic - Concrete - 0.15,SYNTHETIC_CONTROL,Native IFC reference,5,5,VALID,2,0,385
+control_concrete_150,0wnAJp1nDEywwo7Vo$xbfn,Walls : Basic Wall : Generic - Concrete - 0.15,SYNTHETIC_CONTROL,Proposed IFC-RDF,5,5,VALID,5,3,559
+control_concrete_300,1You9r7r15Ax77pHYWcjAi,Walls : Basic Wall : Generic - Concrete - 0.30,SYNTHETIC_CONTROL,Embedded IFC,5,5,N/A,20,18,1825
+control_concrete_300,1You9r7r15Ax77pHYWcjAi,Walls : Basic Wall : Generic - Concrete - 0.30,SYNTHETIC_CONTROL,Native IFC reference,5,5,VALID,2,0,385
+control_concrete_300,1You9r7r15Ax77pHYWcjAi,Walls : Basic Wall : Generic - Concrete - 0.30,SYNTHETIC_CONTROL,Proposed IFC-RDF,5,5,VALID,5,3,559
+control_wood_100,3jVfQlWajACA3M083XXgEN,Walls : Basic Wall : Generic -Wood - 0.10 2,SYNTHETIC_CONTROL,Embedded IFC,5,5,N/A,20,18,1815
+control_wood_100,3jVfQlWajACA3M083XXgEN,Walls : Basic Wall : Generic -Wood - 0.10 2,SYNTHETIC_CONTROL,Native IFC reference,5,5,VALID,2,0,378
+control_wood_100,3jVfQlWajACA3M083XXgEN,Walls : Basic Wall : Generic -Wood - 0.10 2,SYNTHETIC_CONTROL,Proposed IFC-RDF,5,5,VALID,5,3,556

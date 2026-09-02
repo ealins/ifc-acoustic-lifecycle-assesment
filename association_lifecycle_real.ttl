@@ -1,0 +1,184 @@
+@prefix dct: <http://purl.org/dc/terms/> .
+@prefix map: <https://example.org/hft-acoustic/mapping/vocab/> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix status: <https://example.org/hft-acoustic/mapping/status/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+map:AcousticRecordSnapshot a rdfs:Class ;
+    rdfs:label "Acoustic record snapshot" ;
+    rdfs:comment "Version-specific state of an acoustic record used by a mapping validation activity." ;
+    rdfs:subClassOf prov:Entity .
+
+map:CorrespondenceStatus a rdfs:Class,
+        skos:ConceptScheme ;
+    rdfs:label "Correspondence status vocabulary" .
+
+map:IFCElementSnapshot a rdfs:Class ;
+    rdfs:label "IFC element snapshot" ;
+    rdfs:comment "Version-specific evidence about an IFC element used by a mapping validation activity." ;
+    rdfs:subClassOf prov:Entity .
+
+map:MappingAssertion a rdfs:Class ;
+    rdfs:label "Mapping assertion" ;
+    rdfs:comment "Versioned assessment of the technical and semantic validity of one IFC-element to acoustic-record association." ;
+    rdfs:subClassOf prov:Entity .
+
+map:MappingSeries a rdfs:Class ;
+    rdfs:label "Mapping series" ;
+    rdfs:comment "Stable identity for the governed association between an IFC element and an external acoustic record across validation revisions." .
+
+map:ValidationActivity a rdfs:Class ;
+    rdfs:label "Mapping validation activity" ;
+    rdfs:subClassOf prov:Activity .
+
+<https://example.org/hft-acoustic/mapping/series/2qL6OSUnz6ZAzEOn1HxeD2--vabdat-310> a map:MappingSeries ;
+    map:acousticRecord <https://example.org/hft-acoustic/record/vabdat-310> ;
+    map:currentAssertion <https://example.org/hft-acoustic/mapping/assertion/2qL6OSUnz6ZAzEOn1HxeD2--vabdat-310-r1> ;
+    map:ifcElement <https://example.org/hft-acoustic/ifc/element/2qL6OSUnz6ZAzEOn1HxeD2> .
+
+status:acceptable a skos:Concept ;
+    skos:inScheme map:CorrespondenceStatus ;
+    skos:prefLabel "ACCEPTABLE" .
+
+status:broken a skos:Concept ;
+    skos:inScheme map:CorrespondenceStatus ;
+    skos:prefLabel "BROKEN" .
+
+status:invalid a skos:Concept ;
+    skos:inScheme map:CorrespondenceStatus ;
+    skos:prefLabel "INVALID" .
+
+status:multiple-candidates a skos:Concept ;
+    skos:inScheme map:CorrespondenceStatus ;
+    skos:prefLabel "MULTIPLE_CANDIDATES" .
+
+status:semantically-stale a skos:Concept ;
+    skos:inScheme map:CorrespondenceStatus ;
+    skos:prefLabel "SEMANTICALLY_STALE" .
+
+status:unmatched a skos:Concept ;
+    skos:inScheme map:CorrespondenceStatus ;
+    skos:prefLabel "UNMATCHED" .
+
+map:acousticRecord a rdf:Property ;
+    rdfs:label "acoustic record" .
+
+map:assessedAt a rdf:Property ;
+    rdfs:label "assessed at" .
+
+map:constructionFamily a rdf:Property ;
+    rdfs:label "construction family" .
+
+map:currentAssertion a rdf:Property ;
+    rdfs:label "current assertion" .
+
+map:ifcElement a rdf:Property ;
+    rdfs:label "IFC element" .
+
+map:ifcGlobalId a rdf:Property ;
+    rdfs:label "IFC GlobalId" .
+
+map:ifcModelVersion a rdf:Property ;
+    rdfs:label "IFC model version" .
+
+map:ifcReferenceLocation a rdf:Property ;
+    rdfs:label "IFC reference Location URI" .
+
+map:linkCarrier a rdf:Property ;
+    rdfs:label "IFC-side link carrier" .
+
+map:materialEvidence a rdf:Property ;
+    rdfs:label "material evidence" .
+
+map:previousStatus a rdf:Property ;
+    rdfs:label "previous status" .
+
+map:rationale a rdf:Property ;
+    rdfs:label "mapping rationale" .
+
+map:recordAssembly a rdf:Property ;
+    rdfs:label "record assembly" .
+
+map:recordConstructionFamily a rdf:Property ;
+    rdfs:label "record construction family" .
+
+map:recordTotalThickness_m a rdf:Property ;
+    rdfs:label "record total thickness (m)" .
+
+map:recordVersion a rdf:Property ;
+    rdfs:label "acoustic record version" .
+
+map:requiresReview a rdf:Property ;
+    rdfs:label "requires review" .
+
+map:status a rdf:Property ;
+    rdfs:label "mapping status" .
+
+map:technicalResolution a rdf:Property ;
+    rdfs:label "technical resolution" .
+
+map:totalThickness_m a rdf:Property ;
+    rdfs:label "total thickness (m)" .
+
+map:trigger a rdf:Property ;
+    rdfs:label "validation trigger" .
+
+map:validationBasis a rdf:Property ;
+    rdfs:label "validation basis" .
+
+<https://example.org/hft-acoustic/agent/thesis-workflow> a prov:Agent .
+
+<https://example.org/hft-acoustic/ifc/element/2qL6OSUnz6ZAzEOn1HxeD2/snapshot/bau1-2026-02-18> a map:IFCElementSnapshot ;
+    dct:title "Walls : Walls_3OGArc01 : Walls_3OGArc01" ;
+    prov:specializationOf <https://example.org/hft-acoustic/ifc/element/2qL6OSUnz6ZAzEOn1HxeD2> ;
+    map:constructionFamily "metal_frame" ;
+    map:ifcGlobalId "2qL6OSUnz6ZAzEOn1HxeD2" ;
+    map:ifcModelVersion "bau1-2026-02-18" ;
+    map:materialEvidence "Metal Stud Layer" ;
+    map:totalThickness_m 0.285 .
+
+<https://example.org/hft-acoustic/mapping/activity/2qL6OSUnz6ZAzEOn1HxeD2--vabdat-310-validation-r1> a map:ValidationActivity ;
+    prov:endedAtTime "2026-08-19T02:41:20+02:00"^^xsd:dateTime ;
+    prov:used <https://example.org/hft-acoustic/ifc/element/2qL6OSUnz6ZAzEOn1HxeD2/snapshot/bau1-2026-02-18>,
+        <https://example.org/hft-acoustic/record/vabdat-310/snapshot/prototype-v1> ;
+    prov:wasAssociatedWith <https://example.org/hft-acoustic/agent/thesis-workflow> ;
+    map:trigger "initial-real-evaluation" .
+
+<https://example.org/hft-acoustic/mapping/assertion/2qL6OSUnz6ZAzEOn1HxeD2--vabdat-310-r1> a map:MappingAssertion ;
+    prov:wasGeneratedBy <https://example.org/hft-acoustic/mapping/activity/2qL6OSUnz6ZAzEOn1HxeD2--vabdat-310-validation-r1> ;
+    map:acousticRecord <https://example.org/hft-acoustic/record/vabdat-310> ;
+    map:assessedAt "2026-08-19T02:41:20+02:00"^^xsd:dateTime ;
+    map:ifcElement <https://example.org/hft-acoustic/ifc/element/2qL6OSUnz6ZAzEOn1HxeD2> ;
+    map:ifcModelVersion "bau1-2026-02-18" ;
+    map:ifcReferenceLocation "https://example.org/hft-acoustic/record/vabdat-310"^^xsd:anyURI ;
+    map:linkCarrier "IfcDocumentReference" ;
+    map:rationale "total-thickness difference 0.185 m exceeds 0.020 m tolerance." ;
+    map:recordEvidenceHash "fdcc6df4e9e9632c0385d518fa3bee92d9448a10e70aacb12691f666d1ff8cbc" ;
+    map:recordVersion "prototype-v1" ;
+    map:requiresReview true ;
+    map:status status:ambiguous ;
+    map:technicalResolution true ;
+    map:validationBasis "construction family; total thickness; available IFC material/layer evidence; record availability" ;
+    map:wallEvidenceHash "f0ddbba555dc33b18db671c7f0b74ad17529213bc7aecbbb0860386abcdc011d" .
+
+status:ambiguous a skos:Concept ;
+    skos:inScheme map:CorrespondenceStatus ;
+    skos:prefLabel "AMBIGUOUS" .
+
+<https://example.org/hft-acoustic/record/vabdat-310/snapshot/prototype-v1> a map:AcousticRecordSnapshot ;
+    dct:identifier "vabdat-310" ;
+    prov:specializationOf <https://example.org/hft-acoustic/record/vabdat-310> ;
+    map:recordAssembly "B_bGP12_frM75||iMW60_bGP12" ;
+    map:recordConstructionFamily "metal_frame" ;
+    map:recordTotalThickness_m 0.1 ;
+    map:recordVersion "prototype-v1" ;
+    map:technicalResolution true .
+
+<https://example.org/hft-acoustic/ifc/element/2qL6OSUnz6ZAzEOn1HxeD2> a prov:Entity ;
+    map:ifcGlobalId "2qL6OSUnz6ZAzEOn1HxeD2" .
+
+<https://example.org/hft-acoustic/record/vabdat-310> a prov:Entity .
+
