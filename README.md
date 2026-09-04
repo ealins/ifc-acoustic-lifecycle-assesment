@@ -98,9 +98,6 @@ The enrichment is consequently **derived and reversible**: a consumer can inspec
 
 The Evidence & rules tab can load `data/HFT_Bau4_2025.04.22 (1).ifc` through IfcOpenShell. This tested IFC4X3 file contains 514 wall objects. The extractor reads GlobalId, IFC entity type, name, material-layer names, and summed layer thickness where an IFC material-layer set is present. If the real model has no native document reference or custom acoustic Pset, those links remain empty and are reported as missing; the application does not manufacture them. The external RDF record remains separate and can be matched to the selected real wall.
 
-## Recommended thesis evaluation
-
-Evaluate at least these controlled cases for every wall: unchanged rerun, valid acoustic-value change, record-target replacement, URI mismatch, unavailable record, family contradiction, thickness mismatch, missing IDS evidence, unmapped terminology, and restored availability. Report true positives/negatives for each expected status, revision count, false acceptance rate, and whether every change is traceable to a snapshot and change event. This tests the proposed contribution rather than only demonstrating the interface.
 
 ## Run
 
