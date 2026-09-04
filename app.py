@@ -4,8 +4,17 @@ import streamlit as st
 import pandas as pd
 from pathlib import Path
 
-from engine import BASE_URL, LINK_VALIDATION_QUERY, LIFECYCLE_QUERY, build_rdf_turtle, evaluate_lifecycle, extract_ifc_walls
-from models import MappingAssertion
+from engine import (
+    BASE_URL,
+    CONTROLLED_ASSIGNMENT_PROTOCOL,
+    LINK_VALIDATION_QUERY,
+    LIFECYCLE_QUERY,
+    assign_controlled_sample_records,
+    build_rdf_turtle,
+    evaluate_lifecycle,
+    extract_ifc_walls,
+)
+from models import AssignmentMetadata, MappingAssertion
 from visuals import plot_lifecycle_graph, status_color
 
 st.set_page_config(page_title="MappingSeries Lifecycle Validator", page_icon="MS", layout="wide")
@@ -57,6 +66,26 @@ RDF_RECORD_OPTIONS = {
     "VaBDat 328 | B_bGP12_bOSB12_frT120 | TFC": {"record_id": "vabdat-328", "construction_family": "timber_frame", "thickness_m": 0.169, "Rw": 46.5, "assembly": "B_bGP12_bOSB12_frT120||iMW120_bOSB12_bGP12", "report_reference": "M_328"},
     "VaBDat 303 | B_bRCO100 | RCO": {"record_id": "vabdat-303", "construction_family": "reinforced_concrete", "thickness_m": 0.100, "Rw": 52.0, "assembly": "B_bRCO100", "report_reference": "M_303"},
 }
+
+
+def controlled_record_catalog() -> list[dict]:
+    """Return the fixed external sample-record order used by the test protocol."""
+    return [
+        {
+            **record,
+            "record_label": label,
+            "record_uri": f"{BASE_URL}/record/{record['record_id']}",
+        }
+        for label, record in RDF_RECORD_OPTIONS.items()
+    ]
+
+
+def record_option_by_id(record_id: str) -> tuple[str, dict]:
+    return next(
+        (label, record)
+        for label, record in RDF_RECORD_OPTIONS.items()
+        if record["record_id"] == record_id
+    )
 VALIDATION_PROFILES = {
     "Strict thesis validation": {"thickness_tolerance_m": 0.010, "use_semantic_staleness": True, "require_mapping_series": True},
     "Balanced default": {"thickness_tolerance_m": 0.020, "use_semantic_staleness": True, "require_mapping_series": True},
@@ -83,8 +112,17 @@ def initialize_state() -> None:
     st.session_state.setdefault("selected_ifc_wall", "Bau 2 | CLT | 0.176 m")
     st.session_state.setdefault("selected_rdf_record", "VaBDat 310 | B_bGF18_bCLT140_bGF18 | CLT")
     st.session_state.setdefault("real_ifc_walls", [])
-    st.session_state.setdefault("real_ifc_path", "data/HFT_Bau4_2025.04.22 (1).ifc")
+    st.session_state.setdefault("real_wall_assignments", {})
+    st.session_state.setdefault("active_assignment", {})
+    st.session_state.setdefault("evidence_origin", "preset")
+    st.session_state.setdefault("real_ifc_path", "data/HFT_Bau1_2026.02.18.ifc")
     st.session_state.setdefault("selected_real_wall", "")
+    st.session_state.setdefault("real_ifc_sample_size", 12)
+    st.session_state.setdefault("real_ifc_total_walls", 0)
+    st.session_state.setdefault("ifc_source_file", "")
+    st.session_state.setdefault("ifc_source_hash", "")
+    st.session_state.setdefault("ifc_source_sample_size", 0)
+    st.session_state.setdefault("ifc_source_total_walls", 0)
 
 
 def apply_wall_option() -> None:
@@ -97,14 +135,26 @@ def apply_wall_option() -> None:
 
 
 def apply_rdf_option() -> None:
-    option = RDF_RECORD_OPTIONS[st.session_state["selected_rdf_record"]]
-    for field, value in option.items():
-        st.session_state[f"rdf_{field}"] = value
-    st.session_state["rdf_record_uri"] = f"{BASE_URL}/record/{option['record_id']}"
-    st.session_state["ifc_native_record_uri"] = st.session_state["rdf_record_uri"]
-    st.session_state["ifc_pset_record_uri"] = st.session_state["rdf_record_uri"]
-    st.session_state["ifc_mapping_series_uri"] = f"{BASE_URL}/mapping-series/{st.session_state['ifc_GlobalId']}-{option['record_id']}"
-    st.session_state["ifc_pset_mapping_series_uri"] = st.session_state["ifc_mapping_series_uri"]
+    label = st.session_state["selected_rdf_record"]
+    option = RDF_RECORD_OPTIONS[label]
+    _apply_rdf_record(label, option)
+    record_uri = st.session_state["rdf_record_uri"]
+    mapping_series_uri = f"{BASE_URL}/mapping-series/{st.session_state['ifc_GlobalId']}-{option['record_id']}"
+    st.session_state["ifc_native_record_uri"] = record_uri
+    st.session_state["ifc_pset_record_uri"] = record_uri
+    st.session_state["ifc_mapping_series_uri"] = mapping_series_uri
+    st.session_state["ifc_pset_mapping_series_uri"] = mapping_series_uri
+    if st.session_state.get("evidence_origin") == "real_ifc_controlled_assignment":
+        assignment = dict(st.session_state.get("active_assignment", {}))
+        assignment.update({
+            "record_label": label,
+            "record_id": option["record_id"],
+            "record_uri": record_uri,
+            "mapping_series_uri": mapping_series_uri,
+            "assignment_method": "tester override of controlled test allocation",
+            "rationale": "Tester-selected experimental record override; not candidate discovery.",
+        })
+        st.session_state["active_assignment"] = assignment
 
 
 def apply_validation_profile() -> None:
@@ -117,23 +167,60 @@ def apply_validation_profile() -> None:
 def load_real_ifc() -> None:
     path = Path(st.session_state["real_ifc_path"])
     if not path.exists():
+        st.session_state["real_ifc_walls"] = []
+        st.session_state["real_wall_assignments"] = {}
         st.session_state["real_ifc_error"] = f"IFC file not found: {path}"
         return
     try:
-        walls = extract_ifc_walls(str(path))
+        sample = st.session_state["real_ifc_sample_size"]
+        sample_size = sample if sample > 0 else None
+        walls, total = extract_ifc_walls(str(path), sample_size=sample_size)
+        assignments = assign_controlled_sample_records(walls, controlled_record_catalog())
         st.session_state["real_ifc_walls"] = walls
+        st.session_state["real_wall_assignments"] = assignments
+        st.session_state["real_ifc_total_walls"] = total
         st.session_state["selected_real_wall"] = walls[0]["GlobalId"] if walls else ""
+        st.session_state["ifc_source_file"] = walls[0]["source_file"] if walls else path.name
+        st.session_state["ifc_source_hash"] = walls[0]["source_hash"] if walls else ""
+        st.session_state["ifc_source_sample_size"] = len(walls)
+        st.session_state["ifc_source_total_walls"] = total
         st.session_state.pop("real_ifc_error", None)
     except Exception as error:
+        st.session_state["real_ifc_walls"] = []
+        st.session_state["real_wall_assignments"] = {}
         st.session_state["real_ifc_error"] = f"Could not read IFC: {error}"
+
+
+def _apply_rdf_record(label: str, record: dict) -> None:
+    st.session_state["selected_rdf_record"] = label
+    for field, value in record.items():
+        st.session_state[f"rdf_{field}"] = value
+    st.session_state["rdf_record_uri"] = f"{BASE_URL}/record/{record['record_id']}"
 
 
 def apply_real_wall() -> None:
     wall = next((wall for wall in st.session_state["real_ifc_walls"] if wall["GlobalId"] == st.session_state["selected_real_wall"]), None)
-    if not wall:
+    assignment: AssignmentMetadata | None = st.session_state["real_wall_assignments"].get(st.session_state["selected_real_wall"])
+    if not wall or not assignment:
         return
+
     for field, value in wall.items():
         st.session_state[f"ifc_{field}"] = value
+    label, record = record_option_by_id(assignment.record_id)
+    _apply_rdf_record(label, record)
+
+    # These are declared experimental links, not values extracted from the raw IFC.
+    st.session_state["ifc_native_record_uri"] = assignment.record_uri
+    st.session_state["ifc_pset_record_uri"] = assignment.record_uri
+    st.session_state["ifc_mapping_series_uri"] = assignment.mapping_series_uri
+    st.session_state["ifc_pset_mapping_series_uri"] = assignment.mapping_series_uri
+    st.session_state["ifc_association_type"] = "AcousticPerformanceReference"
+    st.session_state["ifc_semantic_profile"] = "HFT-Acoustic-Link-v1"
+    st.session_state["active_assignment"] = assignment.as_dict()
+    st.session_state["evidence_origin"] = "real_ifc_controlled_assignment"
+    st.session_state["ifc_source_sample_size"] = len(st.session_state["real_ifc_walls"])
+    st.session_state["ifc_source_total_walls"] = st.session_state.get("real_ifc_total_walls", 0)
+    activate_wall_history()
 
 
 def set_scenario(name: str) -> None:
@@ -181,8 +268,15 @@ def current_evidence() -> tuple[dict, dict]:
     return ifc, rdf
 
 
+def current_assignment() -> dict:
+    return dict(st.session_state.get("active_assignment", {}))
+
+
 def active_wall_key() -> str:
-    return st.session_state["selected_ifc_wall"]
+    if st.session_state.get("evidence_origin") == "real_ifc_controlled_assignment":
+        source_hash = st.session_state.get("ifc_source_hash", "unknown-source")
+        return f"real:{source_hash}:{st.session_state.get('selected_real_wall', '')}"
+    return f"preset:{st.session_state['selected_ifc_wall']}"
 
 
 def activate_wall_history() -> None:
@@ -221,12 +315,32 @@ def render_flow(result: dict | None, assertions: list[MappingAssertion]) -> None
     st.markdown("<div class='flow-strip'>" + "".join(f"<div class='flow-node'><b>{label}</b><span style='color:{status_color(status)}'>{detail}</span></div><div class='flow-arrow'>-&gt;</div>" for label, (detail, status) in statuses.items())[:-len("<div class='flow-arrow'>-&gt;</div>")] + "</div>", unsafe_allow_html=True)
 
 
+def real_wall_label(wall: dict) -> str:
+    """Build a display label for a real Bau 1 wall: 'Bau 1 | Concrete | [family] | [size]'."""
+    materials = (wall.get("materials") or "").strip()
+    material = "Concrete" if any("concrete" in m.lower() for m in materials.split("/")) else (materials.split("/")[0].split(",")[0].strip() if materials else "")
+    wall_name = (wall.get("wall_name") or "").strip()
+    family = wall_name.split(" : ")[-1].split(" - ")[0].strip() if wall_name else ""
+    size = wall.get("thickness_m") or 0.0
+    return f"Bau 1 | {material or 'Wall'} | {family or '0'} | {size:.3f} m"
+
+
 def render_editors() -> None:
     st.markdown("### Evidence workspace")
     left, right = st.columns(2)
     with left:
         st.markdown("#### IFC-side evidence")
-        st.selectbox("IFC wall option", list(IFC_WALL_OPTIONS), key="selected_ifc_wall", on_change=apply_wall_option)
+        real_walls = st.session_state.get("real_ifc_walls", [])
+        if st.session_state.get("evidence_origin") == "real_ifc_controlled_assignment":
+            st.caption("Wall identity and physical fields were extracted from IFC. URI and semantic-link fields below were declared by the controlled test assignment, not read from the raw IFC.")
+        if real_walls:
+            ifc_options = {real_wall_label(w): w for w in real_walls}
+            current_global_id = st.session_state.get("ifc_GlobalId", "")
+            current_label = next((label for label, wall in ifc_options.items() if wall["GlobalId"] == current_global_id), list(ifc_options)[0])
+            st.session_state["selected_ifc_wall"] = current_label
+            st.selectbox("IFC wall option", list(ifc_options), key="selected_ifc_wall")
+        else:
+            st.selectbox("IFC wall option", list(IFC_WALL_OPTIONS), key="selected_ifc_wall", on_change=apply_wall_option)
         st.caption(f"Preset component metadata from [VaBDat Bauteile]({VABDAT_URL}); all fields below remain editable.")
         for key in ["GlobalId", "element_type", "wall_name", "construction_family", "materials", "native_record_uri", "pset_record_uri", "pset_mapping_series_uri", "mapping_series_uri", "association_type", "semantic_profile"]:
             st.text_input(key, key=f"ifc_{key}")
@@ -234,7 +348,7 @@ def render_editors() -> None:
     with right:
         st.markdown("#### RDF registry / acoustic evidence")
         st.selectbox("Acoustic record option", list(RDF_RECORD_OPTIONS), key="selected_rdf_record", on_change=apply_rdf_option)
-        st.caption(f"Choose a sample record, then change acoustic values and registry variables below. Source: [VaBDat Bauteile]({VABDAT_URL})")
+        st.caption(f"For real IFC mode this is the assigned external sample record; changing it is a tester override, not automated discovery. Source basis: [VaBDat Bauteile]({VABDAT_URL})")
         for key in ["record_uri", "record_id", "construction_family", "unit", "assembly", "source_organisation", "report_reference", "provenance_note"]:
             st.text_input(key, key=f"rdf_{key}")
         st.number_input("thickness_m", min_value=0.0, step=0.001, format="%.3f", key="rdf_thickness_m")
@@ -263,7 +377,7 @@ def render_validation(result: dict | None) -> None:
     with st.expander("Simulation readiness details", expanded=False):
         simulation_rows = result.get("simulation", {}).get("rows", [])
         if simulation_rows:
-            st.dataframe(pd.DataFrame(simulation_rows).astype(str), hide_index=True, use_container_width=True)
+            st.dataframe(pd.DataFrame(simulation_rows).astype(str), hide_index=True, width="stretch")
         st.caption("Rw is a summary rating. Simulation readiness additionally requires spectrum adaptation terms, a documented method, frequency-band R(f) observations, and layer/build-up data.")
     with st.expander("IDS evidence readiness details", expanded=False):
         ids_rows = result["ids"].get("rows")
@@ -331,7 +445,9 @@ def render_lifecycle_summary(assertions: list[MappingAssertion]) -> None:
         "Review": "REQUIRED" if latest.requires_review else "CLEAR",
     }])
     st.dataframe(summary, hide_index=True, use_container_width=True)
-    st.caption(f"Latest revision changes: {', '.join(change_categories)}. Earlier revisions remain immutable in the lifecycle timeline below.")
+    total_changes = sum(len(a.change_events) for a in assertions)
+    st.caption(f"Latest revision changes: {', '.join(_human_change_label(c) for c in change_categories)}.")
+    st.caption(f"**{total_changes}** change(s) tracked across **{len(assertions)}** revision(s). Earlier revisions remain immutable in the lifecycle timeline below.")
 
 
 def render_assessment(result: dict | None) -> None:
@@ -364,13 +480,20 @@ def render_timeline(assertions: list[MappingAssertion]) -> None:
         changes = [event.category for event in assertion.change_events] or ["INITIAL_ASSESSMENT"]
         link_status = getattr(assertion, "link_status", assertion.technical_link_state)
         data_status = getattr(assertion, "data_status", "PASS")
-        st.markdown(f"<div class='revision'><div class='revision-head'><b>MappingAssertion r{assertion.revision_number}</b><span>{assertion.timestamp}</span></div><div><b style='color:{status_color(assertion.semantic_status)}'>{assertion.semantic_status}</b> | Link {link_status} | Data {data_status} | IDS {assertion.ids_status} | bSDD {assertion.bsdd_status} | {'REVIEW' if assertion.requires_review else 'CLEAR'}</div><div class='status-detail'>{assertion.rationale}</div><div class='change-list'>{', '.join(changes)}</div></div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='revision'><div class='revision-head'><b>MappingAssertion r{assertion.revision_number}</b><span>{assertion.timestamp}</span></div><div><b style='color:{status_color(assertion.semantic_status)}'>{assertion.semantic_status}</b> | Link {link_status} | Data {data_status} | IDS {assertion.ids_status} | bSDD {assertion.bsdd_status} | {'REVIEW' if assertion.requires_review else 'CLEAR'}</div><div class='status-detail'>{assertion.rationale}</div><div class='change-list'>{', '.join(_human_change_label(c) for c in changes)}</div></div>", unsafe_allow_html=True)
         with st.expander(f"View stored IFC and RDF snapshots for r{assertion.revision_number}"):
             snapshot_left, snapshot_right = st.columns(2)
             with snapshot_left:
                 st.dataframe(pd.DataFrame(list(assertion.ifc_snapshot.values.items()), columns=["IFC field", "value"]).astype(str), hide_index=True, use_container_width=True)
             with snapshot_right:
                 st.dataframe(pd.DataFrame(list(assertion.rdf_snapshot.values.items()), columns=["RDF field", "value"]).astype(str), hide_index=True, use_container_width=True)
+        if assertion.change_events:
+            with st.expander(f"Detailed changes for r{assertion.revision_number}"):
+                change_df = pd.DataFrame([
+                    {"Change": _human_change_label(e.category), "Side": e.side, "Field": e.field, "Old value": e.old_value, "New value": e.new_value}
+                    for e in assertion.change_events
+                ]).astype(str)
+                st.dataframe(change_df, hide_index=True, use_container_width=True)
 
 
 def render_logic_sidebar() -> None:
@@ -403,23 +526,145 @@ def render_logic_sidebar() -> None:
 
 def render_mapping_register() -> None:
     rows = []
-    for wall_label, wall in IFC_WALL_OPTIONS.items():
-        record_label, record = next((label, value) for label, value in RDF_RECORD_OPTIONS.items() if f"-{value['record_id']}" in wall["mapping_series_uri"])
-        record_id = record["record_id"]
-        rows.append({
-            "IFC wall": wall_label,
-            "wall name": wall["wall_name"],
-            "IFC family": wall["construction_family"],
-            "IFC thickness (m)": wall["thickness_m"],
-            "RDF record": record_label,
-            "record ID": record_id,
-            "RDF thickness (m)": record["thickness_m"],
-            "Rw (dB)": record["Rw"],
-            "MappingSeries": wall["mapping_series_uri"],
-        })
-    st.markdown("### Wall-to-record register")
-    st.caption("This register shows which acoustic RDF record belongs to each IFC wall preset. Values remain editable in Evidence & rules.")
-    st.dataframe(pd.DataFrame(rows).astype(str), hide_index=True, use_container_width=True)
+    real_walls = st.session_state.get("real_ifc_walls", [])
+    assignments: dict[str, AssignmentMetadata] = st.session_state.get("real_wall_assignments", {})
+    if real_walls and assignments:
+        for wall in real_walls:
+            assignment = assignments[wall["GlobalId"]]
+            rows.append({
+                "sample": assignment.sample_position,
+                "real IFC GlobalId": wall["GlobalId"],
+                "wall name": wall["wall_name"],
+                "materials": wall["materials"],
+                "thickness (m)": wall["thickness_m"],
+                "assigned external sample": assignment.record_label,
+                "record ID": assignment.record_id,
+                "assignment method": assignment.assignment_method,
+                "protocol": assignment.protocol_id,
+            })
+        st.markdown("### Controlled real-wall assignment register")
+        st.info("These are deterministic experimental assignments. They were not stored in the raw IFC and were not produced by candidate discovery.")
+    else:
+        for wall_label, wall in IFC_WALL_OPTIONS.items():
+            record_label, record = next((label, value) for label, value in RDF_RECORD_OPTIONS.items() if f"-{value['record_id']}" in wall["mapping_series_uri"])
+            rows.append({
+                "IFC wall preset": wall_label,
+                "wall name": wall["wall_name"],
+                "IFC family": wall["construction_family"],
+                "IFC thickness (m)": wall["thickness_m"],
+                "sample RDF record": record_label,
+                "record ID": record["record_id"],
+                "RDF thickness (m)": record["thickness_m"],
+                "Rw (dB)": record["Rw"],
+            })
+        st.markdown("### Preset wall-to-record register")
+        st.caption("Preset demonstration pairs are editable in Evidence & rules.")
+    st.dataframe(pd.DataFrame(rows).astype(str), hide_index=True, width="stretch")
+
+
+def _human_change_label(category: str) -> str:
+    """Translate cryptic change category codes into a readable description."""
+    labels = {
+        "IFC_GLOBALID_CHANGE": "IFC GlobalId changed",
+        "IFC_TYPE_CHANGE": "IFC element type changed",
+        "IFC_NAME_CHANGE": "IFC wall name changed",
+        "IFC_FAMILY_CHANGE": "IFC construction family changed",
+        "IFC_THICKNESS_CHANGE": "IFC thickness changed",
+        "IFC_MATERIAL_CHANGE": "IFC materials changed",
+        "IFC_NATIVE_URI_CHANGE": "IFC native record URI changed",
+        "IFC_PSET_URI_CHANGE": "IFC pset record URI changed",
+        "IFC_PSET_MAPPING_SERIES_URI_CHANGE": "IFC pset MappingSeries URI changed",
+        "IFC_MAPPING_SERIES_URI_CHANGE": "IFC MappingSeries URI changed",
+        "IFC_ASSOCIATION_TYPE_CHANGE": "IFC association type changed",
+        "IFC_SEMANTIC_PROFILE_CHANGE": "IFC semantic profile changed",
+        "ASSIGNMENT_RECORD_CHANGE": "Experimental record assignment changed",
+        "ASSIGNMENT_MAPPING_SERIES_CHANGE": "Experimental MappingSeries assignment changed",
+        "ASSIGNMENT_METHOD_CHANGE": "Experimental assignment method changed",
+        "ASSIGNMENT_PROTOCOL_CHANGE": "Experimental assignment protocol changed",
+        "RDF_RECORD_URI_CHANGE": "RDF record URI changed",
+        "RDF_RECORD_ID_CHANGE": "RDF record ID changed",
+        "RDF_FAMILY_CHANGE": "RDF construction family changed",
+        "RDF_THICKNESS_CHANGE": "RDF thickness changed",
+        "RDF_RW_CHANGE": "RDF Rw value changed",
+        "RDF_UNIT_CHANGE": "RDF unit changed",
+        "RDF_ASSEMBLY_CHANGE": "RDF assembly changed",
+        "RDF_SOURCE_CHANGE": "RDF source organisation changed",
+        "RDF_REPORT_CHANGE": "RDF report reference changed",
+        "RDF_PROVENANCE_CHANGE": "RDF provenance note changed",
+        "RDF_AVAILABILITY_CHANGE": "RDF record availability changed",
+        "RDF_C_CHANGE": "RDF spectrum adaptation C changed",
+        "RDF_CTR_CHANGE": "RDF spectrum adaptation Ctr changed",
+        "RDF_MEASUREMENT_METHOD_CHANGE": "RDF measurement method changed",
+        "RDF_FREQUENCY_DATA_CHANGE": "RDF frequency data changed",
+        "RDF_LAYER_DATA_CHANGE": "RDF layer data changed",
+        "VALIDATION_PROFILE_CHANGE": "Validation profile changed",
+        "THICKNESS_TOLERANCE_CHANGE": "Thickness tolerance setting changed",
+        "SEMANTIC_STALENESS_SETTING_CHANGE": "Semantic staleness setting changed",
+        "REQUIRE_MAPPING_SERIES_SETTING_CHANGE": "Require MappingSeries setting changed",
+        "SEMANTIC_OVERRIDE_CHANGE": "Semantic override status changed",
+        "OVERRIDE_RATIONALE_CHANGE": "Override rationale changed",
+        "TECHNICAL_STATE_CHANGE": "Technical link state changed",
+        "SEMANTIC_STATUS_CHANGE": "Semantic status changed",
+        "IDS_STATUS_CHANGE": "IDS readiness status changed",
+        "BSDD_STATUS_CHANGE": "bSDD alignment status changed",
+        "MAPPING_SERIES_VALIDITY_CHANGE": "MappingSeries validity changed",
+        "LINK_STATUS_CHANGE": "Link status changed",
+        "RDF_DATA_VALIDITY_CHANGE": "RDF data validity changed",
+        "RECORD_TARGET_CHANGE": "Record target changed",
+        "RATIONAL_CHANGE": "Assessment rationale changed",
+        "REVIEW_STATE_CHANGE": "Review state changed",
+        "MAPPING_SERIES_EXPECTED_URI_CHANGE": "Expected MappingSeries URI changed",
+        "INITIAL_ASSESSMENT": "Initial assessment (no prior version)",
+    }
+    return labels.get(category, category)
+
+
+def render_all_changes(assertions: list[MappingAssertion]) -> None:
+    """Render a consolidated table of ALL changes detected across every lifecycle version."""
+    st.markdown("### All changes across all lifecycle versions")
+    st.caption("Every field change between consecutive MappingAssertion revisions is listed below, newest first. This gives full awareness of what changed at each step of the lifecycle.")
+    if not assertions:
+        st.info("No lifecycle versions exist yet. Run the lifecycle assessment to create revisions.")
+        return
+    rows = []
+    for assertion in assertions:
+        if assertion.change_events:
+            for event in assertion.change_events:
+                rows.append({
+                    "revision": f"r{assertion.revision_number}",
+                    "timestamp": assertion.timestamp,
+                    "side": event.side,
+                    "change": _human_change_label(event.category),
+                    "field": event.field,
+                    "old_value": event.old_value,
+                    "new_value": event.new_value,
+                })
+        else:
+            rows.append({
+                "revision": f"r{assertion.revision_number}",
+                "timestamp": assertion.timestamp,
+                "side": "-",
+                "change": "Initial assessment",
+                "field": "-",
+                "old_value": "-",
+                "new_value": "-",
+            })
+    if not rows:
+        st.info("No changes detected.")
+        return
+    df = pd.DataFrame(rows).astype(str)
+    # Newest states first so the most recent change is on top
+    df = df.iloc[::-1].reset_index(drop=True)
+    st.dataframe(df, hide_index=True, use_container_width=True)
+    total_changes = sum(len(a.change_events) for a in assertions)
+    distinct_fields = sorted({(e.side, e.field) for a in assertions for e in a.change_events})
+    st.caption(f"**{len(assertions)}** revision(s) · **{total_changes}** change(s) across **{len(distinct_fields)}** distinct field(s).")
+    if distinct_fields:
+        with st.expander("Fields that changed over the lifecycle"):
+            st.dataframe(
+                pd.DataFrame([{"side": side, "field": field} for side, field in distinct_fields]).astype(str),
+                hide_index=True, use_container_width=True,
+            )
 
 
 def main() -> None:
@@ -430,8 +675,6 @@ def main() -> None:
     st.title("MappingSeries Lifecycle Validator")
     st.caption("IFC evidence + native link + MappingSeries routing + IDS readiness + bSDD alignment + RDF evidence")
 
-    render_mapping_register()
-
     result = st.session_state.get("last_result")
     assertions = st.session_state["assertions"]
     overview_tab, evidence_tab, validation_tab, lifecycle_tab, graph_tab = st.tabs(["Overview", "Evidence & rules", "Validation", "Lifecycle", "Graph"])
@@ -441,24 +684,60 @@ def main() -> None:
         render_assessment(result)
     with evidence_tab:
         st.markdown("### Real IFC source")
-        st.caption("Load a real IFC file to replace the simulated IFC-side fields. Acoustic RDF data remains external and is never embedded into the IFC.")
+        st.caption("Load and reproducibly sample a real IFC. The test harness then declares a deterministic external sample-record assignment for each wall; this is not candidate discovery and is not data extracted from IFC.")
         source_col, load_col = st.columns([4, 1])
         with source_col:
             st.text_input("IFC file path", key="real_ifc_path")
         with load_col:
             st.write("")
             st.button("Load IFC", on_click=load_real_ifc, use_container_width=True)
+
+        # --- Sample size controls ---
+        sample_col, rerun_col, info_col = st.columns([2, 1, 2])
+        with sample_col:
+            st.number_input(
+                "Walls to sample (0 = all)",
+                min_value=0, max_value=5000, step=10,
+                key="real_ifc_sample_size",
+            )
+        with rerun_col:
+            st.write("")
+            st.button("Re-sample", on_click=load_real_ifc, use_container_width=True)
+        with info_col:
+            total = st.session_state.get("real_ifc_total_walls", 0)
+            loaded = len(st.session_state.get("real_ifc_walls", []))
+            if total:
+                st.caption(f"Showing **{loaded}** of **{total}** walls")
+        # Show source provenance once a real wall file is loaded
+        source_file = st.session_state.get("ifc_source_file", "")
+        if source_file:
+            st.caption(
+                f"Source: `{source_file}` · hash `{st.session_state.get('ifc_source_hash', '')}` · "
+                f"sampled {st.session_state.get('ifc_source_sample_size', 0)} of {st.session_state.get('ifc_source_total_walls', 0)} walls"
+            )
+
         if st.session_state.get("real_ifc_error"):
             st.error(st.session_state["real_ifc_error"])
+        render_mapping_register()
         if st.session_state["real_ifc_walls"]:
-            wall_options = [f"{wall['GlobalId']} | {wall['wall_name']} | {wall['thickness_m']:.3f} m" for wall in st.session_state["real_ifc_walls"]]
+            assignments: dict[str, AssignmentMetadata] = st.session_state["real_wall_assignments"]
+            wall_options = [
+                f"{wall['GlobalId']} | {wall['wall_name']} | {wall['thickness_m']:.3f} m | assigned: {assignments[wall['GlobalId']].record_id}"
+                for wall in st.session_state["real_ifc_walls"]
+            ]
             labels = {label: wall["GlobalId"] for label, wall in zip(wall_options, st.session_state["real_ifc_walls"])}
             selected_label = next((label for label, global_id in labels.items() if global_id == st.session_state["selected_real_wall"]), wall_options[0])
-            st.selectbox("Real IFC wall", wall_options, index=wall_options.index(selected_label), key="selected_real_wall_label")
+            st.selectbox("Real IFC wall and controlled sample assignment", wall_options, index=wall_options.index(selected_label), key="selected_real_wall_label")
             st.session_state["selected_real_wall"] = labels[st.session_state["selected_real_wall_label"]]
-            if st.button("Use selected real wall", use_container_width=True):
+            if st.button("Use selected experimental pair", width="stretch"):
                 apply_real_wall()
                 st.rerun()
+            active = current_assignment()
+            if active:
+                st.caption(
+                    f"Active assignment `{active['assignment_id']}` · `{active['assignment_method']}` · "
+                    "the link is a test input, while MappingAssertion status is derived by the workflow."
+                )
         render_editors()
         st.markdown("### Assessment controls")
         control_left, control_mid, control_right = st.columns([1, 1, 2])
@@ -472,10 +751,10 @@ def main() -> None:
             st.selectbox("Override current status", ["", "ACCEPTABLE", "AMBIGUOUS", "INVALID"], key="semantic_override_status")
             st.text_input("Override rationale", key="semantic_override_note", placeholder="Why should this decision become authoritative?")
         with control_right:
-            if st.button("Run lifecycle assessment", type="primary", use_container_width=True):
+            if st.button("Run lifecycle assessment", type="primary", width="stretch"):
                 ifc, rdf = current_evidence()
                 settings = {"validation_profile": st.session_state["validation_profile"], "thickness_tolerance_m": st.session_state["thickness_tolerance_m"], "use_semantic_staleness": st.session_state["use_semantic_staleness"], "require_mapping_series": st.session_state["require_mapping_series"], "semantic_override_status": st.session_state["semantic_override_status"], "semantic_override_note": st.session_state["semantic_override_note"]}
-                assertion, new_result, events = evaluate_lifecycle(ifc, rdf, settings, st.session_state["previous_state"], assertions)
+                assertion, new_result, events = evaluate_lifecycle(ifc, rdf, settings, st.session_state["previous_state"], assertions, current_assignment())
                 if assertion:
                     assertions.append(assertion)
                     st.session_state["assertions"] = assertions
@@ -492,6 +771,7 @@ def main() -> None:
             st.dataframe(pd.DataFrame([event.__dict__ for event in events]).astype(str), hide_index=True, use_container_width=True)
         else:
             st.caption("No changes detected in the latest run. Identical reruns create no new MappingAssertion.")
+        render_all_changes(assertions)
         render_timeline(assertions)
     with graph_tab:
         st.markdown("### Mapping graph")

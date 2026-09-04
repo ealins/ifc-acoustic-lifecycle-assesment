@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 import json
+import random
+import hashlib
 from typing import Any
+from pathlib import Path
 import ifcopenshell
 from ifcopenshell.util.element import get_material
 from rdflib import Graph, Literal, Namespace, RDF, URIRef
 
 from models import (
+    AssignmentMetadata,
     ChangeEvent,
     EvidenceSnapshot,
     MappingAssertion,
@@ -16,6 +20,9 @@ from models import (
 )
 
 BASE_URL = "https://example.org/hft-acoustic"
+CONTROLLED_ASSIGNMENT_PROTOCOL = "real-ifc-sample-round-robin-v1"
+CONTROLLED_ASSIGNMENT_METHOD = "deterministic controlled test allocation"
+CONTROLLED_ASSIGNMENT_SEED = 42
 BSDD_MAP = {
     "metal_frame": "bsDD:MetalFrameWall",
     "Metal Stud Layer": "bsDD:MetalStudLayer",
@@ -79,9 +86,53 @@ def expected_mapping_series_uri(ifc: dict[str, Any], rdf: dict[str, Any]) -> str
     return f"{BASE_URL}/mapping-series/{ifc.get('GlobalId', '')}-{rdf.get('record_id', '')}"
 
 
-def extract_ifc_walls(path: str) -> list[dict[str, Any]]:
+def assign_controlled_sample_records(
+    walls: list[dict[str, Any]],
+    record_catalog: list[dict[str, Any]],
+    *,
+    protocol_id: str = CONTROLLED_ASSIGNMENT_PROTOCOL,
+    sample_seed: int = CONTROLLED_ASSIGNMENT_SEED,
+) -> dict[str, AssignmentMetadata]:
+    """Assign external sample records reproducibly without claiming candidate discovery."""
+    if not record_catalog:
+        raise ValueError("At least one external sample record is required")
+
+    assignments: dict[str, AssignmentMetadata] = {}
+    for position, wall in enumerate(walls, start=1):
+        global_id = str(wall.get("GlobalId", "")).strip()
+        if not global_id:
+            raise ValueError("Every sampled IFC wall must have a GlobalId")
+        record = record_catalog[(position - 1) % len(record_catalog)]
+        record_id = str(record["record_id"])
+        record_uri = str(record.get("record_uri") or f"{BASE_URL}/record/{record_id}")
+        assignment_id = f"assignment-{protocol_id}-{position:03d}-{global_id}-{record_id}"
+        assignments[global_id] = AssignmentMetadata(
+            assignment_id=assignment_id,
+            protocol_id=protocol_id,
+            wall_global_id=global_id,
+            record_label=str(record.get("record_label", record_id)),
+            record_id=record_id,
+            record_uri=record_uri,
+            mapping_series_uri=f"{BASE_URL}/mapping-series/{global_id}-{record_id}",
+            assignment_method=CONTROLLED_ASSIGNMENT_METHOD,
+            sample_seed=sample_seed,
+            sample_position=position,
+            rationale="Controlled test input; not extracted from IFC and not produced by candidate discovery.",
+        )
+    return assignments
+
+
+def extract_ifc_walls(path: str, sample_size: int | None = None) -> tuple[list[dict[str, Any]], int]:
     model = ifcopenshell.open(path)
-    walls = model.by_type("IfcWall") + model.by_type("IfcWallStandardCase")
+    walls_by_guid = {str(wall.GlobalId): wall for wall in model.by_type("IfcWall")}
+    walls = [walls_by_guid[guid] for guid in sorted(walls_by_guid)]
+    total_count = len(walls)
+    if sample_size and 0 < sample_size < total_count:
+        walls = random.Random(CONTROLLED_ASSIGNMENT_SEED).sample(walls, sample_size)
+
+    # Record source provenance (filename and content hash) for the snapshots
+    file_hash = _file_hash(path)
+
     extracted = []
     for wall in walls:
         materials = []
@@ -91,6 +142,11 @@ def extract_ifc_walls(path: str) -> list[dict[str, Any]]:
             layer_set = material.ForLayerSet
             materials = [layer.Material.Name for layer in layer_set.MaterialLayers if layer.Material and layer.Material.Name]
             thickness = sum(layer.LayerThickness for layer in layer_set.MaterialLayers) / 1000
+        elif material and material.is_a("IfcMaterialLayerSet"):
+            # Direct IfcMaterialLayerSet: layer thickness carries the IFC model unit
+            # (typically meters in this model, no mm->m conversion needed)
+            materials = [layer.Material.Name for layer in material.MaterialLayers if layer.Material and layer.Material.Name]
+            thickness = sum(layer.LayerThickness for layer in material.MaterialLayers)
         elif material and material.is_a("IfcMaterial"):
             materials = [material.Name] if material.Name else []
         extracted.append({
@@ -106,8 +162,22 @@ def extract_ifc_walls(path: str) -> list[dict[str, Any]]:
             "mapping_series_uri": "",
             "association_type": "",
             "semantic_profile": "",
+            "source_file": str(Path(path).name),
+            "source_hash": file_hash,
         })
-    return extracted
+    return extracted, total_count
+
+
+def _file_hash(path: str) -> str:
+    """Return a short SHA-256 content hash of the source IFC file for provenance."""
+    try:
+        digest = hashlib.sha256()
+        with open(path, "rb") as handle:
+            for chunk in iter(lambda: handle.read(65536), b""):
+                digest.update(chunk)
+        return digest.hexdigest()[:12]
+    except OSError:
+        return ""
 
 
 def validate_mapping_series(ifc: dict[str, Any], rdf: dict[str, Any]) -> dict[str, Any]:
@@ -317,7 +387,7 @@ def assess_semantic_status(ifc: dict[str, Any], rdf: dict[str, Any], technical: 
     return {"semantic_status": status, "requires_review": status != "ACCEPTABLE", "rationale": rationale, "decision_factors": [technical["state"], status]}
 
 
-def _change_events(previous: dict[str, Any] | None, current_ifc: dict[str, Any], current_rdf: dict[str, Any], current_results: dict[str, Any]) -> list[ChangeEvent]:
+def _change_events(previous: dict[str, Any] | None, current_ifc: dict[str, Any], current_rdf: dict[str, Any], current_assignment: dict[str, Any], current_results: dict[str, Any]) -> list[ChangeEvent]:
     if not previous:
         return []
     events: list[ChangeEvent] = []
@@ -327,6 +397,18 @@ def _change_events(previous: dict[str, Any] | None, current_ifc: dict[str, Any],
             old, new = old_values.get(field), current.get(field)
             if old != new:
                 events.append(ChangeEvent(category, side, field, old, new))
+    assignment_fields = {
+        "record_id": "ASSIGNMENT_RECORD_CHANGE",
+        "record_uri": "ASSIGNMENT_RECORD_CHANGE",
+        "mapping_series_uri": "ASSIGNMENT_MAPPING_SERIES_CHANGE",
+        "assignment_method": "ASSIGNMENT_METHOD_CHANGE",
+        "protocol_id": "ASSIGNMENT_PROTOCOL_CHANGE",
+    }
+    old_assignment = previous.get("assignment", {})
+    for field, category in assignment_fields.items():
+        old, new = old_assignment.get(field), current_assignment.get(field)
+        if old != new:
+            events.append(ChangeEvent(category, "ASSIGNMENT", field, old, new))
     old_settings = previous.get("settings", {})
     current_settings = current_results.get("settings", {})
     for field, category in SETTING_FIELDS.items():
@@ -354,7 +436,8 @@ def _change_events(previous: dict[str, Any] | None, current_ifc: dict[str, Any],
     return events
 
 
-def evaluate_lifecycle(ifc: dict[str, Any], rdf: dict[str, Any], settings: dict[str, Any], previous: dict[str, Any] | None, assertions: list[MappingAssertion]) -> tuple[MappingAssertion | None, dict[str, Any], list[ChangeEvent]]:
+def evaluate_lifecycle(ifc: dict[str, Any], rdf: dict[str, Any], settings: dict[str, Any], previous: dict[str, Any] | None, assertions: list[MappingAssertion], assignment: dict[str, Any] | None = None) -> tuple[MappingAssertion | None, dict[str, Any], list[ChangeEvent]]:
+    assignment = dict(assignment or {})
     mapping = validate_mapping_series(ifc, rdf)
     technical = validate_native_link(ifc, rdf)
     ids = validate_ids(ifc)
@@ -406,10 +489,12 @@ def evaluate_lifecycle(ifc: dict[str, Any], rdf: dict[str, Any], settings: dict[
         "rationale": semantic["rationale"],
         "requires_review": semantic["requires_review"],
         "mapping_expected_uri": mapping["expected"],
+        "assignment_id": assignment.get("assignment_id", ""),
+        "assignment_method": assignment.get("assignment_method", ""),
         "settings": dict(settings),
     }
-    events = _change_events(previous, ifc, rdf, results)
-    state = {"ifc": dict(ifc), "rdf": dict(rdf), "results": results, "settings": dict(settings)}
+    events = _change_events(previous, ifc, rdf, assignment, results)
+    state = {"ifc": dict(ifc), "rdf": dict(rdf), "assignment": assignment, "results": results, "settings": dict(settings)}
     if previous is not None and not events:
         return None, {"mapping": mapping, "technical": technical, "pset": pset, "data": data, "simulation": simulation, "link_status": link_status, "ids": ids, "bsdd": bsdd, "semantic": semantic, "discrepancies": discrepancies, "state": state}, events
     revision = len(assertions) + 1
@@ -429,9 +514,10 @@ def evaluate_lifecycle(ifc: dict[str, Any], rdf: dict[str, Any], settings: dict[
         semantic_status=semantic["semantic_status"],
         requires_review=semantic["requires_review"],
         rationale=semantic["rationale"],
+        assignment_snapshot=EvidenceSnapshot("ASSIGNMENT", assignment) if assignment else None,
         change_events=events,
         previous_revision=assertions[-1].revision_number if assertions else None,
-        validation_activity=ValidationActivity(revision, utc_now(), f"validation-r{revision}", ["native link", "MappingSeries", "IDS", "bSDD", "semantic assessment"]),
+        validation_activity=ValidationActivity(revision, utc_now(), f"validation-r{revision}", ["controlled assignment", "native link", "MappingSeries", "IDS", "bSDD", "semantic assessment"]),
     )
     return assertion, {"mapping": mapping, "technical": technical, "pset": pset, "data": data, "simulation": simulation, "link_status": link_status, "ids": ids, "bsdd": bsdd, "semantic": semantic, "discrepancies": discrepancies, "state": state}, events
 
@@ -460,8 +546,28 @@ def build_rdf_turtle(assertions: list[MappingAssertion]) -> str:
         graph.add((activity, prov_ns.used, rdf_snapshot))
         graph.add((ifc_snapshot, RDF.type, map_ns.IFCElementSnapshot))
         graph.add((rdf_snapshot, RDF.type, map_ns.RDFRecordSnapshot))
+        if assertion.assignment_snapshot:
+            assignment = map_ns[f"ControlledAssignment_r{assertion.revision_number}"]
+            values = assertion.assignment_snapshot.values
+            graph.add((assignment, RDF.type, map_ns.ControlledSampleAssignment))
+            graph.add((assignment, map_ns.assignmentId, Literal(values.get("assignment_id", ""))))
+            graph.add((assignment, map_ns.assignmentProtocol, Literal(values.get("protocol_id", ""))))
+            graph.add((assignment, map_ns.assignmentMethod, Literal(values.get("assignment_method", ""))))
+            graph.add((assignment, map_ns.assignedWallGlobalId, Literal(values.get("wall_global_id", ""))))
+            graph.add((assignment, map_ns.assignedRecord, URIRef(values.get("record_uri", ""))))
+            graph.add((activity, prov_ns.used, assignment))
         if assertion.previous_revision:
             graph.add((aid, prov_ns.wasRevisionOf, map_ns[f"MappingAssertion_r{assertion.previous_revision}"]))
         else:
             graph.add((aid, map_ns.belongsTo, series))
+        # Persist change events so the RDF export retains full change awareness
+        for index, event in enumerate(getattr(assertion, "change_events", []) or []):
+            change = map_ns[f"ChangeEvent_r{assertion.revision_number}_{index}"]
+            graph.add((change, RDF.type, map_ns.ChangeEvent))
+            graph.add((change, map_ns.changeCategory, Literal(event.category)))
+            graph.add((change, map_ns.changeSide, Literal(event.side)))
+            graph.add((change, map_ns.changeField, Literal(event.field)))
+            graph.add((change, map_ns.oldValue, Literal(str(event.old_value))))
+            graph.add((change, map_ns.newValue, Literal(str(event.new_value))))
+            graph.add((aid, map_ns.hasChangeEvent, change))
     return graph.serialize(format="turtle")

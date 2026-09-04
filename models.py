@@ -33,6 +33,26 @@ class ValidationActivity:
     checks: list[str]
 
 
+@dataclass(frozen=True)
+class AssignmentMetadata:
+    """Controlled experimental wall-to-record assignment (not extracted from IFC)."""
+
+    assignment_id: str
+    protocol_id: str
+    wall_global_id: str
+    record_label: str
+    record_id: str
+    record_uri: str
+    mapping_series_uri: str
+    assignment_method: str
+    sample_seed: int
+    sample_position: int
+    rationale: str
+
+    def as_dict(self) -> dict[str, Any]:
+        return dict(self.__dict__)
+
+
 @dataclass
 class MappingSeries:
     uri: str
@@ -56,6 +76,7 @@ class MappingAssertion:
     semantic_status: str
     requires_review: bool
     rationale: str
+    assignment_snapshot: EvidenceSnapshot | None = None
     change_events: list[ChangeEvent] = field(default_factory=list)
     previous_revision: int | None = None
     validation_activity: ValidationActivity | None = None
@@ -65,6 +86,9 @@ class MappingAssertion:
             "revision_number": self.revision_number,
             "timestamp": self.timestamp,
             "mapping_series_uri": self.mapping_series_uri,
+            "ifc_snapshot": self.ifc_snapshot.values,
+            "rdf_snapshot": self.rdf_snapshot.values,
+            "assignment_snapshot": self.assignment_snapshot.values if self.assignment_snapshot else None,
             "technical_link_state": self.technical_link_state,
             "link_status": self.link_status,
             "data_status": self.data_status,

@@ -10,8 +10,63 @@ STATUS_COLORS = {
     "MISSING": "#7b8794", "grey": "#7b8794",
 }
 
+
 def status_color(status: str) -> str:
     return STATUS_COLORS.get(status, "#7b8794")
+
+
+# Translate cryptic change category codes into readable descriptions (shared with app.py).
+_HUMAN_CHANGE_LABELS = {
+    "IFC_GLOBALID_CHANGE": "IFC GlobalId changed",
+    "IFC_TYPE_CHANGE": "IFC element type changed",
+    "IFC_NAME_CHANGE": "IFC wall name changed",
+    "IFC_FAMILY_CHANGE": "IFC construction family changed",
+    "IFC_THICKNESS_CHANGE": "IFC thickness changed",
+    "IFC_MATERIAL_CHANGE": "IFC materials changed",
+    "IFC_NATIVE_URI_CHANGE": "IFC native record URI changed",
+    "IFC_PSET_URI_CHANGE": "IFC pset record URI changed",
+    "IFC_PSET_MAPPING_SERIES_URI_CHANGE": "IFC pset MappingSeries URI changed",
+    "IFC_MAPPING_SERIES_URI_CHANGE": "IFC MappingSeries URI changed",
+    "IFC_ASSOCIATION_TYPE_CHANGE": "IFC association type changed",
+    "IFC_SEMANTIC_PROFILE_CHANGE": "IFC semantic profile changed",
+    "RDF_RECORD_URI_CHANGE": "RDF record URI changed",
+    "RDF_RECORD_ID_CHANGE": "RDF record ID changed",
+    "RDF_FAMILY_CHANGE": "RDF construction family changed",
+    "RDF_THICKNESS_CHANGE": "RDF thickness changed",
+    "RDF_RW_CHANGE": "RDF Rw value changed",
+    "RDF_UNIT_CHANGE": "RDF unit changed",
+    "RDF_ASSEMBLY_CHANGE": "RDF assembly changed",
+    "RDF_SOURCE_CHANGE": "RDF source organisation changed",
+    "RDF_REPORT_CHANGE": "RDF report reference changed",
+    "RDF_PROVENANCE_CHANGE": "RDF provenance note changed",
+    "RDF_AVAILABILITY_CHANGE": "RDF record availability changed",
+    "RDF_C_CHANGE": "RDF spectrum adaptation C changed",
+    "RDF_CTR_CHANGE": "RDF spectrum adaptation Ctr changed",
+    "RDF_MEASUREMENT_METHOD_CHANGE": "RDF measurement method changed",
+    "RDF_FREQUENCY_DATA_CHANGE": "RDF frequency data changed",
+    "RDF_LAYER_DATA_CHANGE": "RDF layer data changed",
+    "VALIDATION_PROFILE_CHANGE": "Validation profile changed",
+    "SEMANTIC_STALENESS_SETTING_CHANGE": "Semantic staleness setting changed",
+    "REQUIRE_MAPPING_SERIES_SETTING_CHANGE": "Require MappingSeries setting changed",
+    "SEMANTIC_OVERRIDE_CHANGE": "Semantic override status changed",
+    "OVERRIDE_RATIONALE_CHANGE": "Override rationale changed",
+    "TECHNICAL_STATE_CHANGE": "Technical link state changed",
+    "SEMANTIC_STATUS_CHANGE": "Semantic status changed",
+    "IDS_STATUS_CHANGE": "IDS readiness status changed",
+    "BSDD_STATUS_CHANGE": "bSDD alignment status changed",
+    "MAPPING_SERIES_VALIDITY_CHANGE": "MappingSeries validity changed",
+    "LINK_STATUS_CHANGE": "Link status changed",
+    "RDF_DATA_VALIDITY_CHANGE": "RDF data validity changed",
+    "RECORD_TARGET_CHANGE": "Record target changed",
+    "RATIONAL_CHANGE": "Assessment rationale changed",
+    "REVIEW_STATE_CHANGE": "Review state changed",
+    "MAPPING_SERIES_EXPECTED_URI_CHANGE": "Expected MappingSeries URI changed",
+    "INITIAL_ASSESSMENT": "Initial assessment (no prior version)",
+}
+
+
+def human_change_label(category: str) -> str:
+    return _HUMAN_CHANGE_LABELS.get(category, category)
 
 
 def lifecycle_graph(assertions):
@@ -33,7 +88,7 @@ def lifecycle_graph(assertions):
             graph.add_edge(rid, f"assertion-{assertion.previous_revision}", label="wasRevisionOf")
         for index, event in enumerate(assertion.change_events):
             event_id = f"event-{assertion.revision_number}-{index}"
-            graph.add_node(event_id, label=event.category, kind="event")
+            graph.add_node(event_id, label=human_change_label(event.category), kind="event")
             graph.add_edge(rid, event_id, label="hasChangeEvent")
     return graph
 

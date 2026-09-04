@@ -1,3 +1,117 @@
-NEVER use `read_file` on entire source code file if it is larger than 50 lines. You must use targeted search, grep, or read specific line ranges to minimize input payload size.
-When modifying code, use precise patches rather than rewriting or re-reading entire chunks of codebase.
-Keep tool calls hyper-focused. Do not broadly scan directories unless explicitly requested.
+﻿# Cline Workspace Rules — IFC Acoustic Lifecycle Assessment
+
+## Core principle
+Do NOT read, scan, index, or inspect the entire repository unless the user explicitly asks for a full-repository review.
+
+Use the smallest possible set of files needed to complete the task.
+
+## Persistent memory
+Before starting a non-trivial task:
+1. Use Ragionex Memory when available to retrieve relevant project context.
+2. Prefer remembered project decisions and known paths over rediscovering the repository.
+3. Store important architectural decisions, fixes, commands, and project-state changes in memory when appropriate.
+
+## Simple execution tasks
+For requests such as:
+- run Streamlit
+- start the server
+- run a known test
+- check Git status
+- install dependencies
+- stop/start a process
+
+DO NOT inspect unrelated source files.
+
+For Streamlit, use:
+.\.venv\Scripts\python.exe -m streamlit run app.py
+
+## File-reading policy
+Only read a file when:
+- the user names the file,
+- the current task requires it,
+- an error points to it,
+- or a relevant dependency must be inspected.
+
+Do NOT recursively read:
+- .venv/
+- .git/
+- .vscode/
+- logs/
+- __pycache__/
+- generated caches
+- unrelated result folders
+
+## Search policy
+Prefer targeted search over repository-wide exploration.
+
+Before using recursive search, identify the narrowest likely directory or filename pattern.
+
+Do NOT use repository-wide file listing as a default first step.
+
+## Research/result directories
+Treat these as data/result collections, not source code:
+- results/
+- results_multiwall/
+- pilot_results/
+- final_test2_results/
+- final_test3_results_v2/
+
+Only inspect them when the user's task concerns experimental results.
+
+## Multiple architecture versions
+The following directories contain historical/versioned implementations:
+- association_model_upgrade_v3/
+- association_model_upgrade_v4/
+- association_model_upgrade_v5/
+- association_model_upgrade_v6/
+- association_model_upgrade_v7/
+- hybrid_architecture_integration_v1/
+
+Do NOT read all versions together unless the user explicitly asks for comparison or historical review.
+
+Prefer the current root implementation unless the user identifies a specific version.
+
+## IFC files
+Do NOT open or parse the IFC automatically.
+
+Only access:
+data/HFT_Bau4_2025.04.22 (1).ifc
+
+when the task specifically requires IFC analysis, extraction, validation, or testing.
+
+## Code modification
+Before modifying code:
+1. Identify the smallest relevant file set.
+2. Read only those files.
+3. Make the minimal change required.
+4. Run the relevant test or command.
+5. Report exactly what changed.
+
+Do NOT refactor unrelated code.
+
+## Git safety
+Never:
+- git reset --hard
+- git clean -fd
+- git push --force
+- delete project files
+
+unless the user explicitly requests the destructive operation.
+
+Before committing, inspect git status and staged files.
+
+## User intent
+If the user says "run", prioritize execution.
+If the user says "check", inspect only the relevant target.
+If the user says "fix", diagnose the specific failure first.
+If the user says "review the whole project", repository-wide inspection is allowed.
+
+## Efficiency
+Minimize:
+- file reads
+- recursive searches
+- repeated inspection
+- duplicate discovery
+- unnecessary context
+
+Remember: having access to the repository does NOT mean every file needs to be read.

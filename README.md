@@ -29,7 +29,9 @@ Then open <http://localhost:8501>.
 
 ## Research goal
 
-The prototype makes the architecture visible: IFC evidence, a native IFC record link, optional MappingSeries routing, IDS evidence readiness, bSDD-style terminology alignment, RDF evidence, and an append-only MappingAssertion lifecycle.
+The prototype makes the architecture visible: IFC evidence, a declared wall-to-record test assignment, optional IFC-native linking, MappingSeries routing, IDS evidence readiness, bSDD-style terminology alignment, RDF evidence, and an append-only MappingAssertion lifecycle.
+
+Automated candidate discovery is outside the current experimental scope. In real-IFC mode, the workflow begins with deterministic controlled assignments between reproducibly sampled real IFC walls and external sample acoustic records. The application labels these assignments as experimental inputs: they are neither extracted from the raw IFC nor inferred from compatibility. The proposed architecture is tested from association declaration through MappingSeries creation, initial validation, immutable MappingAssertion creation, and lifecycle revision.
 
 ## Acceptance logic
 
@@ -51,13 +53,14 @@ Technical resolution is intentionally separate from semantic validity: a URI can
 
 ## Proposed architecture
 
-The architecture is a five-layer validation pipeline:
+The architecture is a six-stage experimental validation pipeline:
 
-1. **Identity and association:** IFC GlobalId, native `IfcDocumentReference.Location`, RDF record URI/ID, and the derived MappingSeries URI.
-2. **Evidence:** immutable IFC and RDF snapshots captured at assessment time.
-3. **Validation:** native-link resolution, MappingSeries integrity, IDS readiness, bSDD terminology alignment, and RDF acoustic-data checks.
-4. **Decision:** separate Link and Data decisions, followed by semantic status (`ACCEPTABLE`, `AMBIGUOUS`, `INVALID`, `BROKEN`, `UNMATCHED`, or `SEMANTICALLY_STALE`).
-5. **Provenance and governance:** append-only MappingAssertions, validation activities, change events, reviewer overrides, and PROV-style revision links.
+1. **Raw evidence ingestion:** extract IFC wall identity and physical evidence while the acoustic record remains external.
+2. **Controlled assignment:** apply a deterministic, tester-visible wall-to-sample-record fixture. This substitutes for candidate discovery, which is outside scope.
+3. **Stable association identity:** mint a MappingSeries from IFC GlobalId and assigned RDF record ID; an `IfcDocumentReference.Location` is an optional enriched-IFC carrier rather than a prerequisite of the raw model.
+4. **Evidence and validation:** capture immutable IFC, assignment, and RDF snapshots; check link integrity, IDS readiness, bSDD terminology alignment, and RDF acoustic-data compatibility.
+5. **Decision:** produce separate Link and Data decisions followed by semantic status (`ACCEPTABLE`, `AMBIGUOUS`, `INVALID`, `BROKEN`, `UNMATCHED`, or `SEMANTICALLY_STALE`).
+6. **Provenance and governance:** append MappingAssertions, validation activities, change events, tester overrides, and PROV-style revision links without overwriting earlier evidence.
 
 This separation is important: IFC external references answer where external information is identified, IDS answers whether specified IFC information requirements are met, bSDD supports controlled terminology, and PROV describes how an assertion was produced. None of those standards alone defines the complete lifecycle decision for an IFC element associated with an acoustic RDF record.
 
@@ -89,13 +92,17 @@ The **link-validation query** is a precondition query: it finds a wall, native U
 
 ### Overall workflow
 
-`Original IFC + original RDF -> native/Pset link discovery -> MappingSeries identity check -> IDS IFC readiness -> bSDD terminology alignment -> RDF data compatibility -> Link/Data decision -> reviewer approval if retargeted -> immutable MappingAssertion + snapshots + change events -> enriched assessment view`
+`Raw real IFC + external sample RDF -> reproducible wall sampling -> deterministic controlled assignment -> tester confirmation/override -> MappingSeries creation -> IDS/bSDD and RDF-data checks -> Link/Data decision -> immutable MappingAssertion + IFC/assignment/RDF snapshots -> lifecycle change tests`
 
-The enrichment is consequently **derived and reversible**: a consumer can inspect the original source fields, the exact evidence used, the validation rules, the decision, and the provenance chain independently. This is stronger than copying `Rw` into IFC without recording where it came from or which validation activity justified it.
+The assignment is a declared experimental fixture, not a claim that the sample record already belongs to the wall. Candidate discovery and ranking are excluded. Optional IFC enrichment can later project an approved record URI or MappingSeries anchor into a derived IFC copy, while the source IFC remains unchanged.
+
+The enrichment is consequently **derived and reversible**: a consumer can inspect the original source fields, assignment protocol, exact evidence used, validation rules, decision, and provenance chain independently. This is stronger than copying `Rw` into IFC without recording where it came from or which validation activity justified it.
 
 ## Real IFC mode
 
-The Evidence & rules tab can load `data/HFT_Bau4_2025.04.22 (1).ifc` through IfcOpenShell. This tested IFC4X3 file contains 514 wall objects. The extractor reads GlobalId, IFC entity type, name, material-layer names, and summed layer thickness where an IFC material-layer set is present. If the real model has no native document reference or custom acoustic Pset, those links remain empty and are reported as missing; the application does not manufacture them. The external RDF record remains separate and can be matched to the selected real wall.
+The Evidence & rules tab defaults to `data/HFT_Bau1_2026.02.18.ifc` and can load another IFC through IfcOpenShell. The extractor reads GlobalId, IFC entity type, name, material-layer names, summed layer thickness where available, filename, and source hash. It reproducibly samples walls with seed `42`.
+
+After loading, protocol `real-ifc-sample-round-robin-v1` deterministically allocates the ordered external sample records across the sampled walls and immediately displays the complete assignment register. Selecting **Use selected experimental pair** applies the extracted wall evidence and its assigned external record atomically. The generated URI fields are labelled as controlled test inputs, not values found in the raw IFC. A tester may change the record selection; this is stored as an assignment override and can trigger a lifecycle revision.
 
 
 ## Run
