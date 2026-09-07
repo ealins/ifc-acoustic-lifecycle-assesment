@@ -1,0 +1,3 @@
+NEVER use `read_file` on entire source code file if it is larger than 50 lines. You must use targeted search, grep, or read specific line ranges to minimize input payload size.
+When modifying code, use precise patches rather than rewriting or re-reading entire chunks of codebase.
+Keep tool calls hyper-focused. Do not broadly scan directories unless explicitly requested.
