@@ -71,23 +71,29 @@ def human_change_label(category: str) -> str:
 
 def lifecycle_graph(assertions):
     graph = nx.DiGraph()
-    series_uri = assertions[-1].mapping_series_uri if assertions else "MappingSeries"
-    graph.add_node("series", label="MappingSeries", kind="series")
     for assertion in assertions:
-        rid = f"assertion-{assertion.revision_number}"
+        series_id = f"series:{assertion.mapping_series_uri}"
+        series_label = assertion.mapping_series_uri.rsplit("/", 1)[-1]
+        graph.add_node(series_id, label=f"MappingSeries\n{series_label}", kind="series")
+        rid = f"assertion:{assertion.assertion_uri}"
         graph.add_node(rid, label=f"MappingAssertion r{assertion.revision_number}\n{assertion.semantic_status}", kind="assertion", status=assertion.semantic_status)
-        graph.add_edge(rid, "series", label="belongsTo")
-        activity = f"activity-{assertion.revision_number}"
+        graph.add_edge(rid, series_id, label="belongsToSeries")
+        activity = f"activity:{assertion.assertion_uri}"
         graph.add_node(activity, label=f"ValidationActivity r{assertion.revision_number}", kind="activity")
         graph.add_edge(rid, activity, label="wasGeneratedBy")
         for kind, prefix in (("IFC", "ifc"), ("RDF", "rdf")):
-            snapshot = f"{prefix}-{assertion.revision_number}"
+            snapshot = f"{prefix}:{assertion.assertion_uri}"
             graph.add_node(snapshot, label=f"{kind} Snapshot r{assertion.revision_number}", kind="snapshot")
             graph.add_edge(activity, snapshot, label="used")
-        if assertion.previous_revision:
-            graph.add_edge(rid, f"assertion-{assertion.previous_revision}", label="wasRevisionOf")
+        if assertion.previous_assertion_uri:
+            graph.add_edge(rid, f"assertion:{assertion.previous_assertion_uri}", label="wasRevisionOf")
+        if assertion.supersedes_series_uri:
+            old_series_id = f"series:{assertion.supersedes_series_uri}"
+            old_label = assertion.supersedes_series_uri.rsplit("/", 1)[-1]
+            graph.add_node(old_series_id, label=f"MappingSeries\n{old_label}", kind="series")
+            graph.add_edge(series_id, old_series_id, label="supersedes")
         for index, event in enumerate(assertion.change_events):
-            event_id = f"event-{assertion.revision_number}-{index}"
+            event_id = f"event:{assertion.assertion_uri}:{index}"
             graph.add_node(event_id, label=human_change_label(event.category), kind="event")
             graph.add_edge(rid, event_id, label="hasChangeEvent")
     return graph
@@ -103,12 +109,56 @@ def plot_lifecycle_graph(assertions):
         x0, y0 = positions[source]; x1, y1 = positions[target]
         edge_x += [x0, x1, None]; edge_y += [y0, y1, None]
     edge_trace = go.Scatter(x=edge_x, y=edge_y, mode="lines", line=dict(width=1, color="#c9d2dc"), hoverinfo="none")
-    node_x, node_y, labels, colors = [], [], [], []
+    node_x, node_y, labels, hover_text, colors = [], [], [], [], []
     for node, data in graph.nodes(data=True):
         x, y = positions[node]
         node_x.append(x); node_y.append(y); labels.append(data.get("label", node))
+        hover_text.append(f"{data.get('label', node)}<br>{data.get('kind', 'resource')}")
         colors.append(status_color(data.get("status", "grey")) if data.get("kind") == "assertion" else {"series": "#17324d", "activity": "#39739d", "snapshot": "#7b8794", "event": "#d08a00"}.get(data.get("kind"), "#7b8794"))
-    node_trace = go.Scatter(x=node_x, y=node_y, mode="markers+text", text=labels, textposition="top center", marker=dict(size=22, color=colors, line=dict(width=1, color="white")), hoverinfo="text")
+    node_trace = go.Scatter(x=node_x, y=node_y, mode="markers+text", text=labels, textposition="top center", hovertext=hover_text, marker=dict(size=22, color=colors, line=dict(width=1, color="white")), hoverinfo="text")
     figure = go.Figure([edge_trace, node_trace])
-    figure.update_layout(height=560, margin=dict(l=10, r=10, t=25, b=10), showlegend=False, xaxis=dict(visible=False), yaxis=dict(visible=False), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+    figure.update_layout(height=620, margin=dict(l=10, r=10, t=25, b=10), showlegend=False, xaxis=dict(visible=False), yaxis=dict(visible=False), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+    return figure
+
+
+def validation_architecture_graph(result, assertion=None):
+    """Build a compact left-to-right graph explaining one validation run."""
+    graph = nx.DiGraph()
+    transition = result.get("transition", {})
+    stages = [
+        ("ifc", "IFC evidence", "PASS"),
+        ("link", "Native + Pset link", result["link_status"]),
+        ("series", f"MappingSeries\n{transition.get('kind', 'NOT_ASSESSED')}", result["mapping"]["status"]),
+        ("rdf", "Acoustic evidence", result["data"]["status"]),
+        ("rules", f"IDS {result['ids']['status']}\nbSDD {result['bsdd']['status']}", result["ids"]["status"]),
+        ("decision", f"Decision\n{result['semantic']['semantic_status']}", result["semantic"]["semantic_status"]),
+        ("assertion", f"MappingAssertion\nr{assertion.revision_number}" if assertion else "No new assertion", assertion.semantic_status if assertion else "MISSING"),
+    ]
+    for node, label, status in stages:
+        graph.add_node(node, label=label, status=status)
+    graph.add_edges_from(zip([stage[0] for stage in stages], [stage[0] for stage in stages[1:]]))
+    return graph
+
+
+def plot_validation_architecture(result, assertion=None):
+    graph = validation_architecture_graph(result, assertion)
+    order = list(graph.nodes)
+    positions = {node: (index, 0) for index, node in enumerate(order)}
+    edge_x, edge_y = [], []
+    for source, target in graph.edges:
+        x0, y0 = positions[source]; x1, y1 = positions[target]
+        edge_x += [x0, x1, None]; edge_y += [y0, y1, None]
+    edge_trace = go.Scatter(x=edge_x, y=edge_y, mode="lines", line=dict(width=3, color="#64748b"), hoverinfo="none")
+    node_trace = go.Scatter(
+        x=[positions[node][0] for node in order],
+        y=[0 for _ in order],
+        mode="markers+text",
+        text=[graph.nodes[node]["label"] for node in order],
+        textposition="bottom center",
+        hovertext=[f"{graph.nodes[node]['label']}<br>Status: {graph.nodes[node]['status']}" for node in order],
+        hoverinfo="text",
+        marker=dict(size=34, color=[status_color(graph.nodes[node]["status"]) for node in order], line=dict(width=2, color="white")),
+    )
+    figure = go.Figure([edge_trace, node_trace])
+    figure.update_layout(height=330, margin=dict(l=20, r=20, t=30, b=90), showlegend=False, xaxis=dict(visible=False), yaxis=dict(visible=False, range=[-0.35, 0.35]), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
     return figure

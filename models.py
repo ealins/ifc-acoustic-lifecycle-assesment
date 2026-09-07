@@ -79,7 +79,15 @@ class MappingAssertion:
     assignment_snapshot: EvidenceSnapshot | None = None
     change_events: list[ChangeEvent] = field(default_factory=list)
     previous_revision: int | None = None
+    previous_assertion_uri: str | None = None
+    supersedes_series_uri: str | None = None
+    series_transition: str = "INITIAL_SERIES"
+    validation_profile: str = ""
     validation_activity: ValidationActivity | None = None
+
+    @property
+    def assertion_uri(self) -> str:
+        return f"{self.mapping_series_uri}/assertion/{self.revision_number}"
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -98,5 +106,9 @@ class MappingAssertion:
             "semantic_status": self.semantic_status,
             "requires_review": self.requires_review,
             "rationale": self.rationale,
+            "series_transition": self.series_transition,
+            "supersedes_series_uri": self.supersedes_series_uri,
+            "previous_assertion_uri": self.previous_assertion_uri,
+            "validation_profile": self.validation_profile,
             "change_events": [event.__dict__ for event in self.change_events],
         }

@@ -8,6 +8,7 @@ from pathlib import Path
 import ifcopenshell
 from ifcopenshell.util.element import get_material
 from rdflib import Graph, Literal, Namespace, RDF, URIRef
+from rdflib.namespace import XSD
 
 from models import (
     AssignmentMetadata,
@@ -50,10 +51,12 @@ LINK_VALIDATION_QUERY = """SELECT ?wall ?nativeUri ?recordUri ?series WHERE {
     ?wall a ifcowl:IfcWall ; map:nativeRecordUri ?nativeUri ; map:recordUri ?recordUri ; map:mappingSeries ?series .
     FILTER(?nativeUri = ?recordUri)
 }"""
-LIFECYCLE_QUERY = """SELECT ?assertion ?revision ?status ?previous WHERE {
-    ?assertion a map:MappingAssertion ; map:revisionNumber ?revision ; map:semanticStatus ?status .
+LIFECYCLE_QUERY = """SELECT ?series ?assertion ?revision ?status ?previous ?supersededSeries WHERE {
+    ?series a map:MappingSeries ; map:currentAssertion ?assertion .
+    ?assertion a map:MappingAssertion ; map:belongsToSeries ?series ; map:revisionNumber ?revision ; map:semanticStatus ?status .
     OPTIONAL { ?assertion prov:wasRevisionOf ?previous }
-} ORDER BY ?revision"""
+    OPTIONAL { ?series map:supersedes ?supersededSeries }
+} ORDER BY ?series ?revision"""
 RDF_FIELDS = {
     "record_uri": "RDF_RECORD_URI_CHANGE",
     "record_id": "RDF_RECORD_ID_CHANGE",
@@ -310,8 +313,6 @@ def build_discrepancies(ifc: dict[str, Any], rdf: dict[str, Any], mapping: dict[
         add("Lifecycle", "WARNING", "record target", "changed from previous revision", rdf.get("record_id", ""), "A retargeted association requires explicit approval", "Review and override only after approving the new record")
     if semantic_status != "ACCEPTABLE" and not target_changed:
         add("Semantic", "ERROR", "semantic_status", semantic_status, "association decision", "Overall association must be acceptable", "Resolve the listed discrepancies before accepting")
-    if link_status == "RESOLVED" and data["status"] == "PASS" and semantic_status == "ACCEPTABLE":
-        return []
     return discrepancies
 
 
@@ -436,6 +437,10 @@ def _change_events(previous: dict[str, Any] | None, current_ifc: dict[str, Any],
     return events
 
 
+def _series_assertions(assertions: list[MappingAssertion], series_uri: str) -> list[MappingAssertion]:
+    return [assertion for assertion in assertions if assertion.mapping_series_uri == series_uri]
+
+
 def evaluate_lifecycle(ifc: dict[str, Any], rdf: dict[str, Any], settings: dict[str, Any], previous: dict[str, Any] | None, assertions: list[MappingAssertion], assignment: dict[str, Any] | None = None) -> tuple[MappingAssertion | None, dict[str, Any], list[ChangeEvent]]:
     assignment = dict(assignment or {})
     mapping = validate_mapping_series(ifc, rdf)
@@ -494,11 +499,22 @@ def evaluate_lifecycle(ifc: dict[str, Any], rdf: dict[str, Any], settings: dict[
         "settings": dict(settings),
     }
     events = _change_events(previous, ifc, rdf, assignment, results)
+    current_series_uri = mapping["expected"]
+    prior_series_uri = str(previous.get("results", {}).get("mapping_expected_uri", "")) if previous else ""
+    transition = "NEW_SERIES" if prior_series_uri and prior_series_uri != current_series_uri else "SAME_SERIES_REVISION" if previous else "INITIAL_SERIES"
+    supersedes_series_uri = prior_series_uri if transition == "NEW_SERIES" else None
+    results.update({
+        "series_transition": transition,
+        "supersedes_series_uri": supersedes_series_uri,
+    })
     state = {"ifc": dict(ifc), "rdf": dict(rdf), "assignment": assignment, "results": results, "settings": dict(settings)}
+    result_payload = {"mapping": mapping, "technical": technical, "pset": pset, "data": data, "simulation": simulation, "link_status": link_status, "ids": ids, "bsdd": bsdd, "semantic": semantic, "discrepancies": discrepancies, "transition": {"kind": transition, "current_series_uri": current_series_uri, "supersedes_series_uri": supersedes_series_uri}, "state": state}
     if previous is not None and not events:
-        return None, {"mapping": mapping, "technical": technical, "pset": pset, "data": data, "simulation": simulation, "link_status": link_status, "ids": ids, "bsdd": bsdd, "semantic": semantic, "discrepancies": discrepancies, "state": state}, events
-    revision = len(assertions) + 1
-    series = MappingSeries(mapping["expected"], str(ifc.get("GlobalId", "")), str(rdf.get("record_id", "")))
+        return None, result_payload, events
+    series_history = _series_assertions(assertions, current_series_uri)
+    revision = len(series_history) + 1
+    previous_in_series = series_history[-1] if series_history else None
+    series = MappingSeries(current_series_uri, str(ifc.get("GlobalId", "")), str(rdf.get("record_id", "")))
     assertion = MappingAssertion(
         revision_number=revision,
         timestamp=utc_now(),
@@ -516,53 +532,78 @@ def evaluate_lifecycle(ifc: dict[str, Any], rdf: dict[str, Any], settings: dict[
         rationale=semantic["rationale"],
         assignment_snapshot=EvidenceSnapshot("ASSIGNMENT", assignment) if assignment else None,
         change_events=events,
-        previous_revision=assertions[-1].revision_number if assertions else None,
-        validation_activity=ValidationActivity(revision, utc_now(), f"validation-r{revision}", ["controlled assignment", "native link", "MappingSeries", "IDS", "bSDD", "semantic assessment"]),
+        previous_revision=previous_in_series.revision_number if previous_in_series else None,
+        previous_assertion_uri=previous_in_series.assertion_uri if previous_in_series else None,
+        supersedes_series_uri=supersedes_series_uri,
+        series_transition=transition,
+        validation_profile=str(settings.get("validation_profile", "")),
+        validation_activity=ValidationActivity(revision, utc_now(), f"validation-{hashlib.sha256(series.uri.encode()).hexdigest()[:12]}-r{revision}", ["controlled assignment", "native link", "MappingSeries", "IDS", "bSDD", "semantic assessment"]),
     )
-    return assertion, {"mapping": mapping, "technical": technical, "pset": pset, "data": data, "simulation": simulation, "link_status": link_status, "ids": ids, "bsdd": bsdd, "semantic": semantic, "discrepancies": discrepancies, "state": state}, events
+    return assertion, result_payload, events
 
 
 def build_rdf_turtle(assertions: list[MappingAssertion]) -> str:
     graph = Graph()
-    map_ns = Namespace("https://example.org/hft-acoustic/vocab#")
+    map_ns = Namespace("https://example.org/hft-acoustic/mapping/vocab/")
     prov_ns = Namespace("http://www.w3.org/ns/prov#")
     graph.bind("map", map_ns)
     graph.bind("prov", prov_ns)
+    current_by_series = {
+        series_uri: series_assertions[-1]
+        for series_uri in {assertion.mapping_series_uri for assertion in assertions}
+        if (series_assertions := _series_assertions(assertions, series_uri))
+    }
     for assertion in assertions:
-        aid = map_ns[f"MappingAssertion_r{assertion.revision_number}"]
+        aid = URIRef(assertion.assertion_uri)
         series = URIRef(assertion.mapping_series_uri)
-        activity = map_ns[f"ValidationActivity_r{assertion.revision_number}"]
-        ifc_snapshot = map_ns[f"IFCSnapshot_r{assertion.revision_number}"]
-        rdf_snapshot = map_ns[f"RDFSnapshot_r{assertion.revision_number}"]
+        resource_key = hashlib.sha256(assertion.assertion_uri.encode()).hexdigest()[:16]
+        activity = map_ns[f"ValidationActivity_{resource_key}"]
+        ifc_snapshot = map_ns[f"IFCSnapshot_{resource_key}"]
+        rdf_snapshot = map_ns[f"RDFSnapshot_{resource_key}"]
+        ifc_uri = URIRef(f"{BASE_URL}/ifc-element/{assertion.ifc_snapshot.values.get('GlobalId', '')}")
+        record_uri = URIRef(str(assertion.rdf_snapshot.values.get("record_uri", "")))
         graph.add((series, RDF.type, map_ns.MappingSeries))
+        graph.add((series, map_ns.ifcElement, ifc_uri))
+        graph.add((series, map_ns.acousticRecord, record_uri))
+        if current_by_series.get(assertion.mapping_series_uri) is assertion:
+            graph.add((series, map_ns.currentAssertion, aid))
+        if assertion.supersedes_series_uri:
+            graph.add((series, map_ns.supersedes, URIRef(assertion.supersedes_series_uri)))
         graph.add((aid, RDF.type, map_ns.MappingAssertion))
-        graph.add((aid, map_ns.revisionNumber, Literal(assertion.revision_number)))
+        graph.add((aid, map_ns.belongsToSeries, series))
+        graph.add((aid, map_ns.ifcElement, ifc_uri))
+        graph.add((aid, map_ns.acousticRecord, record_uri))
+        graph.add((aid, map_ns.revisionNumber, Literal(assertion.revision_number, datatype=XSD.integer)))
         graph.add((aid, map_ns.semanticStatus, Literal(assertion.semantic_status)))
-        graph.add((aid, map_ns.linkStatus, Literal(getattr(assertion, "link_status", assertion.technical_link_state))))
-        graph.add((aid, map_ns.dataStatus, Literal(getattr(assertion, "data_status", "PASS"))))
+        graph.add((aid, map_ns.linkStatus, Literal(assertion.link_status)))
+        graph.add((aid, map_ns.dataStatus, Literal(assertion.data_status)))
+        graph.add((aid, map_ns.requiresReview, Literal(assertion.requires_review, datatype=XSD.boolean)))
+        graph.add((aid, map_ns.rationale, Literal(assertion.rationale)))
+        graph.add((aid, map_ns.validationProfile, Literal(assertion.validation_profile)))
+        graph.add((aid, map_ns.seriesTransition, Literal(assertion.series_transition)))
+        graph.add((aid, map_ns.assessedAt, Literal(assertion.timestamp, datatype=XSD.dateTime)))
         graph.add((aid, prov_ns.wasGeneratedBy, activity))
-        graph.add((activity, RDF.type, prov_ns.Activity))
+        graph.add((activity, RDF.type, map_ns.ValidationActivity))
         graph.add((activity, prov_ns.used, ifc_snapshot))
         graph.add((activity, prov_ns.used, rdf_snapshot))
+        graph.add((activity, prov_ns.endedAtTime, Literal(assertion.validation_activity.timestamp if assertion.validation_activity else assertion.timestamp, datatype=XSD.dateTime)))
         graph.add((ifc_snapshot, RDF.type, map_ns.IFCElementSnapshot))
-        graph.add((rdf_snapshot, RDF.type, map_ns.RDFRecordSnapshot))
+        graph.add((rdf_snapshot, RDF.type, map_ns.AcousticRecordSnapshot))
         if assertion.assignment_snapshot:
-            assignment = map_ns[f"ControlledAssignment_r{assertion.revision_number}"]
+            assignment = map_ns[f"ControlledAssignment_{resource_key}"]
             values = assertion.assignment_snapshot.values
             graph.add((assignment, RDF.type, map_ns.ControlledSampleAssignment))
             graph.add((assignment, map_ns.assignmentId, Literal(values.get("assignment_id", ""))))
             graph.add((assignment, map_ns.assignmentProtocol, Literal(values.get("protocol_id", ""))))
             graph.add((assignment, map_ns.assignmentMethod, Literal(values.get("assignment_method", ""))))
             graph.add((assignment, map_ns.assignedWallGlobalId, Literal(values.get("wall_global_id", ""))))
-            graph.add((assignment, map_ns.assignedRecord, URIRef(values.get("record_uri", ""))))
+            if values.get("record_uri"):
+                graph.add((assignment, map_ns.assignedRecord, URIRef(values["record_uri"])))
             graph.add((activity, prov_ns.used, assignment))
-        if assertion.previous_revision:
-            graph.add((aid, prov_ns.wasRevisionOf, map_ns[f"MappingAssertion_r{assertion.previous_revision}"]))
-        else:
-            graph.add((aid, map_ns.belongsTo, series))
-        # Persist change events so the RDF export retains full change awareness
-        for index, event in enumerate(getattr(assertion, "change_events", []) or []):
-            change = map_ns[f"ChangeEvent_r{assertion.revision_number}_{index}"]
+        if assertion.previous_assertion_uri:
+            graph.add((aid, prov_ns.wasRevisionOf, URIRef(assertion.previous_assertion_uri)))
+        for index, event in enumerate(assertion.change_events):
+            change = map_ns[f"ChangeEvent_{resource_key}_{index}"]
             graph.add((change, RDF.type, map_ns.ChangeEvent))
             graph.add((change, map_ns.changeCategory, Literal(event.category)))
             graph.add((change, map_ns.changeSide, Literal(event.side)))

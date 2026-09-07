@@ -36,6 +36,14 @@ map:CorrespondenceStatus a rdfs:Class, skos:ConceptScheme ;
 map:ifcElement a rdf:Property ; rdfs:label "IFC element" .
 map:acousticRecord a rdf:Property ; rdfs:label "acoustic record" .
 map:currentAssertion a rdf:Property ; rdfs:label "current assertion" .
+map:belongsToSeries a rdf:Property ; rdfs:label "belongs to mapping series" .
+map:supersedes a rdf:Property ; rdfs:label "supersedes mapping series" .
+map:revisionNumber a rdf:Property ; rdfs:label "revision number" .
+map:seriesTransition a rdf:Property ; rdfs:label "series transition" .
+map:validationProfile a rdf:Property ; rdfs:label "validation profile" .
+map:semanticStatus a rdf:Property ; rdfs:label "semantic status" .
+map:linkStatus a rdf:Property ; rdfs:label "link status" .
+map:dataStatus a rdf:Property ; rdfs:label "data status" .
 map:status a rdf:Property ; rdfs:label "mapping status" .
 map:rationale a rdf:Property ; rdfs:label "mapping rationale" .
 map:validationBasis a rdf:Property ; rdfs:label "validation basis" .

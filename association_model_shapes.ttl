@@ -11,9 +11,13 @@ map:MappingSeriesShape a sh:NodeShape ;
 
 map:MappingAssertionShape a sh:NodeShape ;
     sh:targetClass map:MappingAssertion ;
+    sh:property [ sh:path map:belongsToSeries ; sh:minCount 1 ; sh:maxCount 1 ; sh:class map:MappingSeries ] ;
     sh:property [ sh:path map:ifcElement ; sh:minCount 1 ; sh:maxCount 1 ; sh:nodeKind sh:IRI ] ;
     sh:property [ sh:path map:acousticRecord ; sh:minCount 1 ; sh:maxCount 1 ; sh:nodeKind sh:IRI ] ;
-    sh:property [ sh:path map:status ; sh:minCount 1 ; sh:maxCount 1 ; sh:nodeKind sh:IRI ] ;
+    sh:property [ sh:path map:revisionNumber ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:integer ] ;
+    sh:property [ sh:path map:semanticStatus ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:property [ sh:path map:seriesTransition ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:property [ sh:path map:validationProfile ; sh:minCount 1 ; sh:maxCount 1 ] ;
     sh:property [ sh:path map:rationale ; sh:minCount 1 ; sh:maxCount 1 ] ;
     sh:property [ sh:path map:ifcModelVersion ; sh:minCount 1 ; sh:maxCount 1 ] ;
     sh:property [ sh:path map:recordVersion ; sh:minCount 1 ; sh:maxCount 1 ] ;

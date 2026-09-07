@@ -15,9 +15,9 @@ from engine import (
     extract_ifc_walls,
 )
 from models import AssignmentMetadata, MappingAssertion
-from visuals import plot_lifecycle_graph, status_color
+from visuals import plot_lifecycle_graph, plot_validation_architecture, status_color
 
-st.set_page_config(page_title="MappingSeries Lifecycle Validator", page_icon="MS", layout="wide")
+st.set_page_config(page_title="MappingSeries Lifecycle Validator", page_icon=":material/account_tree:", layout="wide")
 
 DEFAULT_IFC = {
     "GlobalId": "2qL6OSUnz6ZAzEOn1HxeD2",
@@ -361,10 +361,24 @@ def render_editors() -> None:
         st.checkbox("record_available", key="rdf_record_available")
 
 
-def render_validation(result: dict | None) -> None:
+def render_validation(result: dict | None, assertions: list[MappingAssertion] | None = None) -> None:
     if not result:
         st.info("Run the lifecycle assessment to evaluate the current evidence.")
         return
+    assertions = assertions or []
+    current_series_uri = result.get("transition", {}).get("current_series_uri", "")
+    latest = next((assertion for assertion in reversed(assertions) if assertion.mapping_series_uri == current_series_uri), None)
+    st.markdown("### Validation architecture")
+    st.caption("This view shows how source evidence, link integrity, pair identity, validation rules, and the resulting immutable assertion relate for this run.")
+    st.plotly_chart(plot_validation_architecture(result, latest), width="stretch", key="validation_architecture")
+    transition = result.get("transition", {})
+    with st.container(border=True):
+        st.markdown(f"**Series transition:** `{transition.get('kind', 'NOT_ASSESSED')}`")
+        st.caption(f"Current pair anchor: {transition.get('current_series_uri', 'not generated')}")
+        if transition.get("supersedes_series_uri"):
+            st.warning(f"A different acoustic target created a new MappingSeries at r1. It supersedes {transition['supersedes_series_uri']}.", icon=":material/swap_horiz:")
+        elif latest:
+            st.caption("The same wall-record pair remains in one MappingSeries; decision-relevant changes append a revision.")
     st.markdown("### Link, IDS and terminology validation")
     checks = [("Link decision", result.get("link_status", result["technical"]["state"])), ("Native link", result["technical"]["state"]), ("Pset link", result.get("pset", {}).get("state", "MISSING")), ("MappingSeries check", result["mapping"]["status"]), ("RDF data decision", result.get("data", {}).get("status", "PASS")), ("Simulation readiness", result.get("simulation", {}).get("status", "PARTIAL")), ("IDS readiness", result["ids"]["status"]), ("bSDD alignment", result["bsdd"]["status"])]
     for check_start in range(0, len(checks), 4):
@@ -431,6 +445,7 @@ def render_lifecycle_summary(assertions: list[MappingAssertion]) -> None:
         st.info("No MappingAssertion has been created yet. Run the lifecycle assessment to create revision r1.")
         return
     latest = assertions[-1]
+    series_count = len({assertion.mapping_series_uri for assertion in assertions})
     link_status = getattr(latest, "link_status", latest.technical_link_state)
     data_status = getattr(latest, "data_status", "PASS")
     change_categories = [event.category for event in latest.change_events] or ["INITIAL_ASSESSMENT"]
@@ -446,8 +461,8 @@ def render_lifecycle_summary(assertions: list[MappingAssertion]) -> None:
     }])
     st.dataframe(summary, hide_index=True, use_container_width=True)
     total_changes = sum(len(a.change_events) for a in assertions)
-    st.caption(f"Latest revision changes: {', '.join(_human_change_label(c) for c in change_categories)}.")
-    st.caption(f"**{total_changes}** change(s) tracked across **{len(assertions)}** revision(s). Earlier revisions remain immutable in the lifecycle timeline below.")
+    st.caption(f"Latest transition: `{latest.series_transition}`. Latest revision changes: {', '.join(_human_change_label(c) for c in change_categories)}.")
+    st.caption(f"**{total_changes}** change(s) tracked across **{len(assertions)}** assertion(s) in **{series_count}** MappingSeries. Earlier assertions remain append-only in the lifecycle timeline below.")
 
 
 def render_assessment(result: dict | None) -> None:
@@ -475,25 +490,36 @@ def render_timeline(assertions: list[MappingAssertion]) -> None:
     if not assertions:
         st.info("No MappingAssertion exists yet.")
         return
-    st.caption(f"MappingSeries: {assertions[-1].mapping_series_uri}")
+    series_groups: dict[str, list[MappingAssertion]] = {}
     for assertion in assertions:
-        changes = [event.category for event in assertion.change_events] or ["INITIAL_ASSESSMENT"]
-        link_status = getattr(assertion, "link_status", assertion.technical_link_state)
-        data_status = getattr(assertion, "data_status", "PASS")
-        st.markdown(f"<div class='revision'><div class='revision-head'><b>MappingAssertion r{assertion.revision_number}</b><span>{assertion.timestamp}</span></div><div><b style='color:{status_color(assertion.semantic_status)}'>{assertion.semantic_status}</b> | Link {link_status} | Data {data_status} | IDS {assertion.ids_status} | bSDD {assertion.bsdd_status} | {'REVIEW' if assertion.requires_review else 'CLEAR'}</div><div class='status-detail'>{assertion.rationale}</div><div class='change-list'>{', '.join(_human_change_label(c) for c in changes)}</div></div>", unsafe_allow_html=True)
-        with st.expander(f"View stored IFC and RDF snapshots for r{assertion.revision_number}"):
-            snapshot_left, snapshot_right = st.columns(2)
-            with snapshot_left:
-                st.dataframe(pd.DataFrame(list(assertion.ifc_snapshot.values.items()), columns=["IFC field", "value"]).astype(str), hide_index=True, use_container_width=True)
-            with snapshot_right:
-                st.dataframe(pd.DataFrame(list(assertion.rdf_snapshot.values.items()), columns=["RDF field", "value"]).astype(str), hide_index=True, use_container_width=True)
-        if assertion.change_events:
-            with st.expander(f"Detailed changes for r{assertion.revision_number}"):
-                change_df = pd.DataFrame([
-                    {"Change": _human_change_label(e.category), "Side": e.side, "Field": e.field, "Old value": e.old_value, "New value": e.new_value}
-                    for e in assertion.change_events
-                ]).astype(str)
-                st.dataframe(change_df, hide_index=True, use_container_width=True)
+        series_groups.setdefault(assertion.mapping_series_uri, []).append(assertion)
+    for series_index, (series_uri, series_assertions) in enumerate(series_groups.items(), start=1):
+        with st.container(border=True):
+            st.markdown(f"**MappingSeries {series_index}:** `{series_uri.rsplit('/', 1)[-1]}`")
+            st.caption(series_uri)
+            superseded_by = next((candidate.mapping_series_uri for candidate in assertions if candidate.supersedes_series_uri == series_uri), None)
+            if superseded_by:
+                st.warning(f"Superseded by {superseded_by}", icon=":material/history:")
+            else:
+                st.success("Active series", icon=":material/check_circle:")
+            for assertion in series_assertions:
+                changes = [event.category for event in assertion.change_events] or ["INITIAL_ASSESSMENT"]
+                link_status = getattr(assertion, "link_status", assertion.technical_link_state)
+                data_status = getattr(assertion, "data_status", "PASS")
+                st.markdown(f"<div class='revision'><div class='revision-head'><b>MappingAssertion r{assertion.revision_number}</b><span>{assertion.timestamp}</span></div><div><b style='color:{status_color(assertion.semantic_status)}'>{assertion.semantic_status}</b> | Link {link_status} | Data {data_status} | IDS {assertion.ids_status} | bSDD {assertion.bsdd_status} | {'REVIEW' if assertion.requires_review else 'CLEAR'}</div><div class='status-detail'>{assertion.rationale}</div><div class='change-list'>{assertion.series_transition} · {', '.join(_human_change_label(c) for c in changes)}</div></div>", unsafe_allow_html=True)
+                with st.expander(f"View stored snapshots for series {series_index}, r{assertion.revision_number}"):
+                    snapshot_left, snapshot_right = st.columns(2)
+                    with snapshot_left:
+                        st.dataframe(pd.DataFrame(list(assertion.ifc_snapshot.values.items()), columns=["IFC field", "value"]).astype(str), hide_index=True, width="stretch")
+                    with snapshot_right:
+                        st.dataframe(pd.DataFrame(list(assertion.rdf_snapshot.values.items()), columns=["RDF field", "value"]).astype(str), hide_index=True, width="stretch")
+                if assertion.change_events:
+                    with st.expander(f"Detailed changes for series {series_index}, r{assertion.revision_number}"):
+                        change_df = pd.DataFrame([
+                            {"Change": _human_change_label(e.category), "Side": e.side, "Field": e.field, "Old value": e.old_value, "New value": e.new_value}
+                            for e in assertion.change_events
+                        ]).astype(str)
+                        st.dataframe(change_df, hide_index=True, width="stretch")
 
 
 def render_logic_sidebar() -> None:
@@ -507,7 +533,7 @@ def render_logic_sidebar() -> None:
             st.markdown("**RDF data validation**")
             st.markdown("- Record identity, family, thickness, Rw, dB unit, assembly, source, report, and provenance are checked.\n- Family contradiction is INVALID.\n- Missing or incompatible data is AMBIGUOUS and requires review.\n- A changed record target is UNMATCHED until explicitly approved.")
             st.markdown("**Lifecycle implementation**")
-            st.markdown("- Each selected IFC wall has its own history.\n- Every evidence or rule change creates an immutable revision.\n- Identical reruns create no revision.\n- Overrides are stored with a reviewer rationale and become the next baseline.")
+            st.markdown("- Each selected IFC wall has its own history.\n- Changes to the same wall-record pair append a MappingAssertion revision.\n- Selecting a different acoustic record creates a new MappingSeries at r1 and supersedes the old series.\n- Identical reruns create no assertion.\n- Overrides are stored with a reviewer rationale and become the next baseline.")
             st.markdown("**Standards roles**")
             st.markdown("- IDS checks IFC evidence readiness.\n- bSDD-style mapping normalises terms.\n- PROV-style snapshots and activities explain revision history.")
         with st.expander("Source, enrichment and query logic", expanded=False):
@@ -763,7 +789,7 @@ def main() -> None:
                 st.session_state["lifecycle_histories"][active_wall_key()] = {"assertions": assertions, "previous_state": new_result["state"], "last_result": new_result, "last_events": events}
                 st.rerun()
     with validation_tab:
-        render_validation(result)
+        render_validation(result, assertions)
     with lifecycle_tab:
         st.markdown("### Change detection")
         events = st.session_state.get("last_events", [])
@@ -775,9 +801,10 @@ def main() -> None:
         render_timeline(assertions)
     with graph_tab:
         st.markdown("### Mapping graph")
+        st.caption("Separate MappingSeries nodes identify distinct wall-record pairs. Assertion revision links never cross series; a retarget uses a series-level supersedes edge.")
         if assertions:
-            st.plotly_chart(plot_lifecycle_graph(assertions), use_container_width=True)
-            st.download_button("Download lifecycle Turtle", build_rdf_turtle(assertions), "mapping-lifecycle.ttl", "text/turtle")
+            st.plotly_chart(plot_lifecycle_graph(assertions), width="stretch", key="lifecycle_graph")
+            st.download_button("Download lifecycle Turtle", build_rdf_turtle(assertions), "mapping-lifecycle.ttl", "text/turtle", icon=":material/download:")
         else:
             st.caption("Run an assessment to create the graph.")
         with st.expander("Executable architecture queries"):
