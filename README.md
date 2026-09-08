@@ -1,128 +1,494 @@
 # FAIR Acoustic Component Platform
 
-> A FAIR-oriented research data management framework and acoustic component library integrating IFC geometry, measurement datasets, RDF metadata and lifecycle stewardship.
+> A FAIR-oriented research data management framework and acoustic component library integrating IFC geometry, measurement datasets, semantic metadata and lifecycle stewardship.
 
 ## Research thesis
 
 **A FAIR-oriented research data management framework and acoustic component library integrating IFC geometry, measurement datasets and metadata.**
 
-The repository is an architectural pivot of the existing IFC Acoustic Lifecycle Assessment prototype. The lifecycle implementation is preserved and repositioned as a **FAIR Stewardship Engine** rather than removed.
+This repository is an architectural pivot of the original **IFC Acoustic Lifecycle Assessment** research prototype. The lifecycle work has not been removed or replaced. Its existing association, provenance, versioning, MappingSeries, MappingAssertion, semantic validity and change-detection mechanisms now operate as a **FAIR Stewardship Engine** inside a broader research-data-management platform.
 
-## Three information objects
-
-The platform manages:
-
-1. **Geometry** — IFC GlobalId, geometry-related evidence, materials, dimensions, semantic classification and spatial context.
-2. **Measurements** — VaBDat-style XML, spectra, vibration data, mode shapes, insulation metrics and other experimental datasets.
-3. **Metadata** — provenance, authorship, method, institution, instrument, version, uncertainty, quality, license, FAIR information and persistent identifiers.
-
-These objects are aggregated into a `FairAcousticPackage`.
+The key change is therefore conceptual and architectural:
 
 ```text
+OLD
+IFC Element
+    ↓
+External Record
+    ↓
+Association
+    ↓
+Lifecycle Assessment
+
+NEW
 IFC Geometry + Measurement Dataset + Metadata
-                       ↓
-              FairAcousticPackage
-                       ↓
-           FAIR Assessment
-                 +
-        Lifecycle Stewardship
+                    ↓
+            FairAcousticPackage
+                    ↓
+             FAIR Assessment
+                    +
+          Lifecycle Stewardship
 ```
 
-## FAIR package structure
+## Three managed information objects
 
-A portable package contains:
+### 1. Geometry — IFC
+
+The geometry resource remains an IFC file. The platform extracts and records component-level evidence including:
+
+- IFC `GlobalId`
+- IFC entity class
+- component name
+- material layers and material names
+- layer-derived or property-derived thickness
+- semantic/predefined classification
+- spatial containment context
+- model version / source filename
+- source SHA-256 evidence
+
+The source IFC is not overwritten.
+
+### 2. Measurements — external research datasets
+
+Measurement datasets remain independent from IFC. Supported package inputs currently include XML, CSV, JSON, text/data files, HDF5 and VTK-style files. The research model is intentionally broader than one acoustic metric and can represent:
+
+- VaBDat-style XML records
+- frequency spectra
+- airborne sound-insulation results
+- vibration datasets
+- mode shapes
+- experimental measurements
+- derived acoustic metrics
+
+The builder records measurement type, method, instrument, assembly/specimen, construction family, thickness, report reference and—when applicable—`Rw`, `C` and `Ctr` values.
+
+### 3. Metadata — RDF / Linked Data
+
+Metadata describes and connects the research objects. It includes:
+
+- package and measurement identifiers
+- provenance
+- creator / authorship
+- institution
+- measurement method
+- instrument
+- version
+- uncertainty
+- quality / calibration information
+- license / rights
+- descriptive title, description and keywords
+- FAIR assessment evidence
+- lifecycle stewardship identity
+- checksums
+
+Metadata is generated as RDF/Turtle using RDFLib and a FAIR Acoustic vocabulary alongside DCAT, Dublin Core Terms and PROV concepts.
+
+## Central entity: `FairAcousticPackage`
+
+`fair_platform.models.FairAcousticPackage` is the aggregate research-data object.
+
+It contains references to geometry, measurement and metadata resources while also carrying the two independent assessment states:
+
+```python
+FairAcousticPackage(
+    package_id=...,
+    geometry_reference="geometry.ifc",
+    measurement_reference="measurement.xml",
+    metadata_reference="metadata.ttl",
+    provenance=...,
+    version=...,
+    identifier=...,
+    fair_status=...,
+    lifecycle_status=...,
+    findable=...,
+    accessible=...,
+    interoperable=...,
+    reusable=...,
+)
+```
+
+The package does **not** replace `MappingSeries` or `MappingAssertion`.
+
+- `FairAcousticPackage` = packaged research-data object.
+- `MappingSeries` = stable stewardship relationship between IFC and a measurement identity.
+- `MappingAssertion` = immutable lifecycle assessment revision.
+
+## Portable package structure
+
+The export service produces a real ZIP archive:
 
 ```text
-package.zip
+<FAP-ID>.zip
 ├── geometry.ifc
 ├── measurement.<source-extension>
 ├── metadata.ttl
 └── manifest.json
 ```
 
-The manifest includes package identity, resource references, FAIR state, lifecycle state and SHA-256 checksums.
+The source measurement extension is retained. A VaBDat XML input therefore becomes `measurement.xml`, while a vibration CSV becomes `measurement.csv`.
 
-## FAIR assessment
+`manifest.json` records:
 
-The platform evaluates four dimensions with criterion-level evidence:
+- package identifier and version
+- creator and license
+- geometry and measurement resource metadata
+- original source filenames
+- media types
+- IFC GlobalId
+- dataset URI
+- FAIR status and criterion-level assessment
+- lifecycle stewardship status
+- MappingSeries and latest MappingAssertion references
+- SHA-256 checksums
+- resource sizes
 
-- **Findable** — persistent identifier, searchable metadata, IFC GlobalId.
-- **Accessible** — dataset URI, measurement availability, metadata accessibility.
-- **Interoperable** — IFC linkage, RDF linkage, standard representations.
-- **Reusable** — provenance, version, quality information, reuse license and measurement context.
+## FAIR assessment engine
 
-States include:
+The FAIR assessment is deliberately explainable. Each criterion records:
 
-`FAIR_READY`, `PARTIALLY_FAIR`, `NOT_FINDABLE`, `NOT_ACCESSIBLE`, `NOT_INTEROPERABLE`, `NOT_REUSABLE`.
+- pass/fail
+- evidence used for the decision
+- remediation guidance
 
-The individual F/A/I/R results are always retained so a package can expose multiple deficiencies rather than hiding them behind one score.
+### Findable
 
-## Lifecycle stewardship
+Checks:
 
-Existing lifecycle functionality remains part of the architecture. The current validation and revision mechanisms become the stewardship layer that verifies whether package relationships remain technically resolvable, semantically defensible and version-aware.
+- persistent identifier exists and has an HTTP(S), URN or DOI-like form
+- searchable descriptive metadata exists
+- IFC GlobalId exists
 
-Existing lifecycle states remain valid, including:
+### Accessible
 
-`ACCEPTABLE`, `STALE` / `SEMANTICALLY_STALE`, `BROKEN`, `INVALID`, `AMBIGUOUS`, `MULTIPLE_CANDIDATES`, `UNMATCHED`.
+Checks:
 
-FAIR state and lifecycle state are independent. For example, a package may be `FAIR_READY` but `SEMANTICALLY_STALE`, or `PARTIALLY_FAIR` while the current association is `ACCEPTABLE`.
+- dataset URI / landing-page identifier exists
+- measurement bytes are included in the package
+- metadata resource is included
 
-## Streamlit workspaces
+The prototype checks declared accessibility evidence; it does not claim that an external HTTP endpoint is continuously reachable unless a separate network-resolution service is added.
 
-The revised UI is organized around four research workflows:
+### Interoperable
 
-1. **FAIR Package Builder** — upload IFC and measurements, inspect IFC evidence, create metadata and generate a package.
-2. **FAIR Assessment** — inspect Findable, Accessible, Interoperable and Reusable checks on a dedicated dashboard.
-3. **Lifecycle Stewardship** — reuse the existing three-tier validation engine for association monitoring and semantic validity.
-4. **Component Library** — search packages, inspect metadata and export portable ZIP packages.
+Checks:
 
-## Architecture
+- IFC geometry resource is linked to a GlobalId
+- RDF metadata parses successfully
+- standard/documented representations are used
 
-New FAIR functionality lives in `fair_platform/` and wraps the existing code rather than replacing it.
+### Reusable
+
+Checks:
+
+- provenance exists
+- version exists
+- quality / uncertainty information exists
+- reuse license exists
+- measurement type and method provide measurement context
+
+### FAIR states
+
+The platform supports the requested states:
 
 ```text
-fair_platform/
-├── models.py
-├── assessment.py
-├── package_builder.py
-├── manifest.py
-├── metadata.py
-├── catalog.py
-└── export.py
-
-lifecycle_engine/              # preserved lifecycle implementation
-dashboard/backend/             # adapters and existing validation services
-dashboard/pages/               # FAIR workspaces
-metadata/fair_acoustic.ttl     # FAIR acoustic vocabulary
+FAIR_READY
+PARTIALLY_FAIR
+NOT_FINDABLE
+NOT_ACCESSIBLE
+NOT_INTEROPERABLE
+NOT_REUSABLE
 ```
 
-The existing `MappingSeries`, `MappingAssertion`, RDFLib/SPARQL, IFC/IfcOpenShell, provenance, versioning and semantic association logic remain available as stewardship mechanisms.
+Every F/A/I/R dimension remains separately visible. `PARTIALLY_FAIR` is used when some criteria fail but no dimension is completely absent. A `NOT_*` state can represent a dimension with no satisfied evidence, while the full assessment still records all other deficiencies.
 
-## Run the FAIR UI
+## Dual assessment model
+
+FAIR readiness and lifecycle validity are intentionally independent.
+
+Examples:
+
+```text
+FAIR Status:      FAIR_READY
+Lifecycle Status: STALE
+```
+
+```text
+FAIR Status:      PARTIALLY_FAIR
+Lifecycle Status: ACCEPTABLE
+```
+
+A reusable, well-described package can become semantically stale when its geometry or measurement evidence changes. Conversely, a currently valid IFC-to-measurement relationship may still be poorly FAIR because it lacks a reuse license or quality metadata.
+
+## Lifecycle Stewardship — preserved existing engine
+
+The original lifecycle implementation remains the authoritative stewardship logic.
+
+Core lifecycle implementation files are retained rather than rewritten by the FAIR pivot:
+
+- `engine.py`
+- `models.py`
+- `association_lifecycle.py`
+- `lifecycle_engine/assessment.py`
+- `lifecycle_engine/change_detector.py`
+- `lifecycle_engine/evaluation_runner.py`
+- `lifecycle_engine/ifc_extractor.py`
+- `lifecycle_engine/models.py`
+
+For `Rw`-oriented airborne-sound-insulation packages, `fair_platform.stewardship.FairStewardshipService` calls the existing advanced `engine.evaluate_lifecycle()` pipeline. This preserves the existing:
+
+- native-link checks
+- MappingSeries validation
+- IFC/RDF data checks
+- IDS-style readiness
+- bSDD-style alignment
+- semantic status decision
+- retargeting detection
+- change events
+- immutable revisions
+- PROV-style RDF history
+
+For other acoustic measurement types such as vibration or mode-shape datasets, the package uses the existing generic three-tier lifecycle validator rather than forcing an `Rw`-specific record schema.
+
+Existing lifecycle states remain visible:
+
+```text
+ACCEPTABLE
+STALE                 # user-facing alias of existing SEMANTICALLY_STALE
+BROKEN
+INVALID
+AMBIGUOUS
+MULTIPLE_CANDIDATES
+UNMATCHED
+```
+
+The internal `SEMANTICALLY_STALE` value is preserved for compatibility with the existing engine; the FAIR UI presents it as `STALE`.
+
+## Metadata Catalog
+
+The former record-centric "RDF Registry" role becomes a package-centric **Metadata Catalog**.
+
+`fair_platform.catalog.MetadataCatalog` builds one RDF graph from the package metadata and supports:
+
+- library search
+- FAIR-state filtering
+- lifecycle-state filtering
+- measurement-type filtering
+- direct SPARQL queries
+
+The Streamlit Component Library includes a SPARQL workbench. Example queries are in:
+
+- `queries.sparql`
+- `metadata/fair_queries.sparql`
+
+## RDF metadata profile
+
+The package metadata uses:
+
+- RDF
+- RDFLib
+- DCAT
+- Dublin Core Terms
+- PROV
+- the project FAIR Acoustic vocabulary
+- the preserved MappingSeries / MappingAssertion vocabulary
+
+Ontology/profile resources:
+
+```text
+metadata/fair_acoustic.ttl
+metadata/fair_shapes.ttl
+metadata/fair_queries.sparql
+```
+
+The SHACL file defines structural expectations for FAIR packages, IFC geometry nodes and measurement dataset nodes. It is supplied as an explicit validation profile and can be executed by a SHACL processor such as pySHACL when required.
+
+## Streamlit application
+
+The root application is now the canonical FAIR platform:
 
 ```bash
-python -m pip install -r dashboard/requirements.txt
+streamlit run app.py
+```
+
+The `dashboard/app.py` entrypoint remains as a compatibility path and launches the same platform shell.
+
+### Workspace 1 — FAIR Package Builder
+
+- upload IFC
+- automatically inspect `IfcWall` components
+- select a component by GlobalId
+- inspect IFC class, materials, thickness and spatial context
+- upload measurement data
+- preview XML / JSON / CSV content structure
+- enter measurement context
+- enter descriptive metadata
+- enter provenance, quality and license information
+- generate a FAIR package
+- immediately export ZIP + manifest
+
+### Workspace 2 — FAIR Assessment
+
+Displays:
+
+```text
+Findable       readiness + criteria
+Accessible     readiness + criteria
+Interoperable  readiness + criteria
+Reusable       readiness + criteria
+```
+
+It also provides:
+
+- overall FAIR status
+- composite readiness score
+- criterion evidence table
+- remediation queue
+- resource manifest
+- re-assessment / metadata regeneration
+- package export
+
+### Workspace 3 — Lifecycle Stewardship
+
+Displays:
+
+- geometry evidence
+- measurement evidence
+- FAIR status
+- lifecycle status
+- stewardship profile
+- MappingSeries URI
+- latest MappingAssertion URI
+- immutable revision history
+- latest discrepancies / validation checks
+- PROV/RDF stewardship history
+
+### Workspace 4 — Component Library
+
+Provides:
+
+- persistent package listing
+- search
+- FAIR filter
+- lifecycle filter
+- measurement-type filter
+- RDF triple count
+- package inspection
+- metadata Turtle inspection
+- ZIP export
+- local deletion
+- SPARQL workbench
+
+## Persistence
+
+Generated packages are persisted by `fair_platform.repository.PackageRepository` under:
+
+```text
+packages/<package-id>/
+├── geometry.ifc
+├── measurement.<ext>
+├── metadata.ttl
+├── manifest.json
+└── package.json
+```
+
+`packages/` is runtime data and is ignored by Git.
+
+Set a different package store with:
+
+```bash
+FAIR_PACKAGE_STORE=/path/to/store streamlit run app.py
+```
+
+This filesystem repository is intentionally an adapter. It can later be replaced by object storage, an institutional repository, a triple store or a PID-backed research-data repository without changing the `FairAcousticPackage` domain model.
+
+## Repository architecture
+
+```text
+.
+├── app.py                              # canonical FAIR Streamlit entrypoint
+├── engine.py                           # preserved advanced lifecycle engine
+├── models.py                           # preserved MappingSeries/Assertion models
+├── association_lifecycle.py            # preserved lifecycle/RDF logic
+├── queries.sparql                      # lifecycle + FAIR SPARQL examples
+│
+├── fair_platform/
+│   ├── __init__.py
+│   ├── models.py                       # FairAcousticPackage + FAIR result model
+│   ├── assessment.py                   # F/A/I/R evaluation
+│   ├── package_builder.py              # package construction
+│   ├── manifest.py                     # manifest model
+│   ├── metadata.py                     # RDF/DCAT/PROV generation
+│   ├── export.py                       # finalization, hashes, ZIP export
+│   ├── repository.py                   # persistent local package store
+│   ├── catalog.py                      # RDF metadata catalog + SPARQL
+│   └── stewardship.py                  # adapter to preserved lifecycle engines
+│
+├── dashboard/
+│   ├── app.py                          # compatibility entrypoint
+│   ├── backend/
+│   │   ├── ifc_parser.py               # richer FAIR geometry extraction
+│   │   ├── validators.py               # preserved generic lifecycle wrapper
+│   │   ├── lifecycle_bridge.py         # preserved lifecycle bridge
+│   │   ├── rdf_registry.py             # compatibility layer
+│   │   └── fair_bridge.py              # Streamlit ↔ persistent repository bridge
+│   └── ui/
+│       ├── fair_dashboard.py           # visual system / FAIR cards
+│       └── platform_app.py             # four FAIR workspaces
+│
+├── lifecycle_engine/                   # preserved lifecycle package
+├── metadata/
+│   ├── fair_acoustic.ttl
+│   ├── fair_shapes.ttl
+│   └── fair_queries.sparql
+├── tests/
+└── packages/                           # runtime, ignored
+```
+
+## Run
+
+```bash
+python -m pip install -r requirements.txt
+streamlit run app.py
+```
+
+Alternative compatibility entrypoint:
+
+```bash
 streamlit run dashboard/app.py
 ```
 
-The original root-level lifecycle prototype remains in the repository for reproducibility and comparison.
+## Tests
 
-## Research design principle
+```bash
+python -m pytest -q tests
+```
 
-The source IFC and source measurement datasets are not overwritten. FAIR packaging and lifecycle assessment create a governed metadata/stewardship layer around them. This keeps source evidence independently inspectable while allowing derived package status, provenance, version history and association decisions to evolve.
+Tests cover FAIR assessment, canonical ZIP resources, manifest checksums, repository round trips and core package services. GitHub Actions also compiles the application modules and runs the test suite.
 
-## Current implementation status
+## Research scope and limitations
 
-The FAIR layer currently provides:
+This is a research prototype, not a laboratory measurement system, acoustic simulation package, institutional repository or production PID service.
 
-- `FairAcousticPackage` aggregate model
-- explainable F/A/I/R evaluation
-- RDF/Turtle metadata generation
-- package manifest generation
-- SHA-256 package checksums
-- ZIP export
-- IFC inspection in the package builder
-- lifecycle-engine reuse through the Stewardship workspace
-- in-session searchable component library
+The platform currently demonstrates the architectural integration of:
 
-Persistent catalog storage and repository-grade persistent identifiers are intentionally left as extension points rather than simulated as production infrastructure.
+```text
+IFC geometry
++
+measurement datasets
++
+semantic metadata
++
+FAIR assessment
++
+lifecycle stewardship
++
+component-library discovery
+```
+
+External URI reachability is represented through declared access metadata and the existing lifecycle technical-resolution mechanisms where applicable. Production deployment should add repository authentication, robust HTTP resolution policies, real PID minting, access-control metadata, institutional storage, automated SHACL execution and controlled vocabulary services.
+
+## Migration / implementation specification
+
+The detailed preservation map, exact file changes and logical commit plan are documented in:
+
+`docs/FAIR_PIVOT_ARCHITECTURE.md`
