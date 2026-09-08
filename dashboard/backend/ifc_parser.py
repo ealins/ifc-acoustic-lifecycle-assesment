@@ -1,239 +1,175 @@
-"""
-IFC File Parser for Wall Extraction
+"""IFC extraction for FAIR geometry resources."""
+from __future__ import annotations
 
-Extracts wall evidence from IFC files using ifcopenshell.
-Implements caching and error handling for production use.
-"""
-
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Dict, List
+from typing import Optional
 import hashlib
 import json
 
 
-@dataclass
-class WallExtractionResult:
-    """Result of extracting a wall from an IFC file."""
-    global_id: str
-    name: str
-    construction_family: str
-    total_thickness_m: Optional[float]
-    material_evidence: List[str]
-    model_version: str
-    extraction_success: bool
-    error_details: Optional[str] = None
-
-
 class IFCExtractor:
-    """Extract wall evidence from IFC files."""
-    
+    """Extract IFC component identity, materials, dimensions and spatial context."""
+
     def __init__(self, cache_dir: Optional[Path] = None):
-        """
-        Initialize IFC extractor with optional caching.
-        
-        Args:
-            cache_dir: Directory to cache extraction results. If None, caching is disabled.
-        """
         self.cache_dir = cache_dir
         if cache_dir:
             cache_dir.mkdir(parents=True, exist_ok=True)
-    
-    def _get_cache_key(self, ifc_path: Path) -> str:
-        """Generate cache key from IFC file path and content hash."""
-        file_hash = hashlib.md5(ifc_path.read_bytes()).hexdigest()
-        return f"{ifc_path.stem}_{file_hash}"
-    
-    def _read_from_cache(self, ifc_path: Path) -> Optional[List[Dict]]:
-        """Read cached extraction results."""
+
+    def _cache_key(self, ifc_path: Path) -> str:
+        digest = hashlib.sha256(ifc_path.read_bytes()).hexdigest()[:20]
+        return f"{ifc_path.stem}_{digest}"
+
+    def _read_cache(self, ifc_path: Path):
         if not self.cache_dir:
             return None
-        
-        cache_file = self.cache_dir / f"{self._get_cache_key(ifc_path)}.json"
-        if cache_file.exists():
-            try:
-                return json.loads(cache_file.read_text())
-            except Exception:
-                return None
-        return None
-    
-    def _write_to_cache(self, ifc_path: Path, walls: List[Dict]) -> None:
-        """Write extraction results to cache."""
+        target = self.cache_dir / f"{self._cache_key(ifc_path)}.json"
+        if not target.exists():
+            return None
+        try:
+            return json.loads(target.read_text(encoding="utf-8"))
+        except Exception:
+            return None
+
+    def _write_cache(self, ifc_path: Path, data: list[dict]) -> None:
         if not self.cache_dir:
             return
-        
-        cache_file = self.cache_dir / f"{self._get_cache_key(ifc_path)}.json"
         try:
-            cache_file.write_text(json.dumps(walls, indent=2))
+            (self.cache_dir / f"{self._cache_key(ifc_path)}.json").write_text(
+                json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8"
+            )
         except Exception:
-            pass  # Silently fail on cache write
+            pass
 
-    
-    
-    def extract_all_walls(self, ifc_path: Path) -> List[Dict]:
-        """
-        Extract all walls from an IFC file.
-        
-        Args:
-            ifc_path: Path to IFC file
-            
-        Returns:
-            List of wall dictionaries with evidence
-        """
-        # Check cache first
-        cached = self._read_from_cache(ifc_path)
+    def extract_all_walls(self, ifc_path: Path) -> list[dict]:
+        cached = self._read_cache(ifc_path)
         if cached is not None:
             return cached
-        
+
         try:
             import ifcopenshell
+            from ifcopenshell.util.unit import calculate_unit_scale
         except ImportError:
-            return [{
-                "extraction_success": False,
-                "error_details": "ifcopenshell not installed. Install with: pip install ifcopenshell"
-            }]
-        
-        walls = []
+            return [{"extraction_success": False, "error_details": "IfcOpenShell is not installed."}]
+
         try:
             model = ifcopenshell.open(str(ifc_path))
-            model_version = ifc_path.stem
-            
-            # Extract all walls from the IFC model
-            wall_entities = model.by_type("IfcWall") + model.by_type("IfcWallStandardCase")
-            
-            for wall_entity in wall_entities:
-                wall_dict = self._extract_wall_evidence(wall_entity, model, model_version)
-                walls.append(wall_dict)
-            
-            # Cache successful results
-            self._write_to_cache(ifc_path, walls)
-            
-        except Exception as e:
-            walls.append({
-                "extraction_success": False,
-                "error_details": f"IFC parsing error: {str(e)}"
-            })
-    
-    def _extract_wall_evidence(self, wall_entity, model, model_version: str) -> Dict:
-        """
-        Extract evidence from a single wall entity.
-        
-        Args:
-            wall_entity: IfcWall or IfcWallStandardCase entity
-            model: ifcopenshell model object
-            model_version: Version identifier for the model
-            
-        Returns:
-            Dictionary with wall evidence
-        """
+            unit_scale = float(calculate_unit_scale(model))
+            source_hash = hashlib.sha256(ifc_path.read_bytes()).hexdigest()
+            wall_entities = {str(w.GlobalId): w for w in model.by_type("IfcWall") if getattr(w, "GlobalId", None)}
+            walls = [
+                self._extract_wall(wall_entities[guid], model, unit_scale, ifc_path.stem, ifc_path.name, source_hash)
+                for guid in sorted(wall_entities)
+            ]
+            self._write_cache(ifc_path, walls)
+            return walls
+        except Exception as exc:
+            return [{"extraction_success": False, "error_details": f"IFC parsing error: {exc}"}]
+
+    def _extract_wall(self, wall, model, unit_scale: float, model_version: str, source_file: str, source_hash: str) -> dict:
         try:
-            global_id = wall_entity.GlobalId
-            name = getattr(wall_entity, "Name", "Unknown Wall")
-            
-            # Extract material information
-            material_evidence = self._extract_materials(wall_entity)
-            construction_family = self._infer_construction_family(material_evidence, wall_entity)
-            
-            # Extract thickness
-            total_thickness_m = self._extract_thickness(wall_entity)
-            
+            layers = self._material_layers(wall, unit_scale)
+            materials = [item["name"] for item in layers if item.get("name")]
+            if not materials:
+                materials = self._material_names(wall)
+            thickness = sum(item.get("thickness_m", 0.0) or 0.0 for item in layers) or self._property_thickness(wall, unit_scale)
+            spatial = self._spatial_context(wall)
+            predefined = str(getattr(wall, "PredefinedType", "") or getattr(wall, "ObjectType", "") or "")
             return {
-                "global_id": str(global_id),
-                "name": str(name),
-                "construction_family": construction_family,
-                "total_thickness_m": total_thickness_m,
-                "material_evidence": material_evidence,
+                "global_id": str(wall.GlobalId),
+                "ifc_class": wall.is_a(),
+                "name": str(getattr(wall, "Name", None) or "Unnamed IFC component"),
+                "construction_family": self._infer_family(materials, predefined),
+                "semantic_classification": predefined,
+                "total_thickness_m": round(float(thickness), 6) if thickness is not None else None,
+                "material_evidence": materials,
+                "material_layers": layers,
+                "spatial_context": spatial,
                 "model_version": model_version,
+                "source_file": source_file,
+                "source_sha256": source_hash,
                 "extraction_success": True,
-                "error_details": None
+                "error_details": None,
             }
-            
-        except Exception as e:
+        except Exception as exc:
             return {
-                "global_id": getattr(wall_entity, "GlobalId", "UNKNOWN"),
+                "global_id": str(getattr(wall, "GlobalId", "UNKNOWN")),
                 "extraction_success": False,
-                "error_details": f"Wall extraction failed: {str(e)}"
+                "error_details": f"Component extraction failed: {exc}",
             }
-    
-    def _extract_materials(self, wall_entity) -> List[str]:
-        """Extract material names from wall entity."""
-        materials = []
-        
+
+    def _material_layers(self, wall, unit_scale: float) -> list[dict]:
         try:
-            # Get HasAssociations
-            associations = getattr(wall_entity, "HasAssociations", [])
-            for assoc in associations:
-                if hasattr(assoc, "RelatedObjects"):
-                    for obj in assoc.RelatedObjects:
-                        if hasattr(obj, "Name"):
-                            mat_name = str(obj.Name).strip()
-                            if mat_name and mat_name not in materials:
-                                materials.append(mat_name)
-            
-            # Try material properties
-            if hasattr(wall_entity, "HasPropertySets"):
-                for pset in wall_entity.HasPropertySets:
-                    if hasattr(pset, "HasProperties"):
-                        for prop in pset.HasProperties:
-                            if "Material" in str(getattr(prop, "Name", "")):
-                                if hasattr(prop, "NominalValue"):
-                                    mat_name = str(prop.NominalValue).strip()
-                                    if mat_name and mat_name not in materials:
-                                        materials.append(mat_name)
+            from ifcopenshell.util.element import get_material
+            material = get_material(wall)
+            if not material:
+                return []
+            if material.is_a("IfcMaterialLayerSetUsage"):
+                material = material.ForLayerSet
+            if material.is_a("IfcMaterialLayerSet"):
+                rows = []
+                for layer in material.MaterialLayers:
+                    name = str(layer.Material.Name) if layer.Material and layer.Material.Name else "Unnamed material"
+                    rows.append({"name": name, "thickness_m": round(float(layer.LayerThickness) * unit_scale, 6)})
+                return rows
+            if material.is_a("IfcMaterial"):
+                return [{"name": str(material.Name or "Unnamed material"), "thickness_m": None}]
         except Exception:
             pass
-        
-        return materials if materials else ["Unknown Material"]
-    
-    def _extract_thickness(self, wall_entity) -> Optional[float]:
-        """Extract total thickness from wall entity in meters."""
+        return []
+
+    def _material_names(self, wall) -> list[str]:
+        names: list[str] = []
         try:
-            # Check IfcWallStandardCase Quantity properties
-            if hasattr(wall_entity, "HasPropertySets"):
-                for pset in wall_entity.HasPropertySets:
-                    if hasattr(pset, "HasProperties"):
-                        for prop in pset.HasProperties:
-                            prop_name = str(getattr(prop, "Name", "")).lower()
-                            if "thickness" in prop_name:
-                                if hasattr(prop, "NominalValue"):
-                                    try:
-                                        return float(prop.NominalValue)
-                                    except (ValueError, TypeError):
-                                        pass
+            from ifcopenshell.util.element import get_material
+            material = get_material(wall)
+            if material and getattr(material, "Name", None):
+                names.append(str(material.Name))
         except Exception:
             pass
-        
+        return names
+
+    def _property_thickness(self, wall, unit_scale: float) -> Optional[float]:
+        try:
+            from ifcopenshell.util.element import get_psets
+            psets = get_psets(wall)
+            for properties in psets.values():
+                if not isinstance(properties, dict):
+                    continue
+                for key, value in properties.items():
+                    if str(key).lower() in {"thickness", "width", "overallwidth"} and isinstance(value, (int, float)):
+                        return float(value) * unit_scale
+        except Exception:
+            pass
         return None
-    
-    def _infer_construction_family(self, materials: List[str], wall_entity) -> str:
-        """Infer construction family from materials and wall type."""
-        material_str = " ".join(materials).lower()
-        
-        # Pattern matching for construction families
-        if any(term in material_str for term in ["concrete", "beton"]):
+
+    def _spatial_context(self, wall) -> dict:
+        context = {"structure_type": None, "name": None, "global_id": None}
+        try:
+            relationships = getattr(wall, "ContainedInStructure", []) or []
+            if relationships:
+                structure = relationships[0].RelatingStructure
+                context = {
+                    "structure_type": structure.is_a(),
+                    "name": str(getattr(structure, "Name", None) or ""),
+                    "global_id": str(getattr(structure, "GlobalId", None) or ""),
+                }
+        except Exception:
+            pass
+        return context
+
+    @staticmethod
+    def _infer_family(materials: list[str], classification: str) -> str:
+        text = " ".join(materials + [classification]).lower()
+        if any(term in text for term in ["concrete", "beton"]):
             return "Concrete"
-        elif any(term in material_str for term in ["brick", "masonry", "mortar"]):
+        if any(term in text for term in ["brick", "masonry", "mortar", "ziegel"]):
             return "Masonry Wall"
-        elif any(term in material_str for term in ["wood", "timber", "holz", "clt"]):
+        if any(term in text for term in ["wood", "timber", "holz", "clt"]):
             return "Timber Frame"
-        elif any(term in material_str for term in ["steel", "metal", "metallstud"]):
+        if any(term in text for term in ["steel", "metal", "stud"]):
             return "Steel Frame"
-        else:
-            return "Unknown Family"
+        return "Unknown Family"
 
 
-def extract_walls_from_ifc(ifc_path: Path, cache_dir: Optional[Path] = None) -> List[Dict]:
-    """
-    Convenience function to extract all walls from an IFC file.
-    
-    Args:
-        ifc_path: Path to IFC file
-        cache_dir: Optional directory for caching results
-        
-    Returns:
-        List of wall evidence dictionaries
-    """
-    extractor = IFCExtractor(cache_dir=cache_dir)
-    return extractor.extract_all_walls(ifc_path)
-
-
+def extract_walls_from_ifc(ifc_path: Path, cache_dir: Optional[Path] = None) -> list[dict]:
+    return IFCExtractor(cache_dir=cache_dir).extract_all_walls(ifc_path)

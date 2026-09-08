@@ -1,0 +1,44 @@
+PREFIX fairac: <https://example.org/fair-acoustic/vocab/>
+PREFIX dct: <http://purl.org/dc/terms/>
+PREFIX dcat: <http://www.w3.org/ns/dcat#>
+PREFIX map: <https://example.org/hft-acoustic/mapping/vocab/>
+PREFIX prov: <http://www.w3.org/ns/prov#>
+
+# FAIR-Q1 — Package library with independent FAIR and lifecycle states
+SELECT ?package ?id ?title ?fairStatus ?lifecycleStatus ?geometry ?measurement WHERE {
+  ?package a fairac:FairAcousticPackage ;
+           dct:identifier ?id ;
+           dct:title ?title ;
+           fairac:fairStatus ?fairStatus ;
+           fairac:lifecycleStatus ?lifecycleStatus ;
+           fairac:hasGeometry ?geometry ;
+           fairac:hasMeasurement ?measurement .
+}
+ORDER BY ?title
+
+# FAIR-Q2 — Packages linked to IFC GlobalIds and measurement identifiers
+SELECT ?package ?globalId ?measurement ?measurementId WHERE {
+  ?package a fairac:FairAcousticPackage ;
+           fairac:hasGeometry ?geometry ;
+           fairac:hasMeasurement ?measurement .
+  ?geometry fairac:ifcGlobalId ?globalId .
+  ?measurement dct:identifier ?measurementId .
+}
+
+# FAIR-Q3 — Packages currently requiring lifecycle review
+SELECT ?package ?series ?assertion ?status WHERE {
+  ?package a fairac:FairAcousticPackage ; fairac:stewardedBy ?series .
+  ?series a map:MappingSeries ; map:currentAssertion ?assertion .
+  ?assertion map:semanticStatus ?status .
+  FILTER(?status != "ACCEPTABLE")
+}
+
+# FAIR-Q4 — Stewardship revision chain
+SELECT ?series ?assertion ?revision ?status ?previous WHERE {
+  ?assertion a map:MappingAssertion ;
+             map:belongsToSeries ?series ;
+             map:revisionNumber ?revision ;
+             map:semanticStatus ?status .
+  OPTIONAL { ?assertion prov:wasRevisionOf ?previous }
+}
+ORDER BY ?series ?revision

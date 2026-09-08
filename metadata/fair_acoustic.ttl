@@ -1,0 +1,35 @@
+@prefix fairac: <https://example.org/fair-acoustic/vocab/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix dct: <http://purl.org/dc/terms/> .
+@prefix dcat: <http://www.w3.org/ns/dcat#> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+fairac: a owl:Ontology ;
+    dct:title "FAIR Acoustic Component Platform vocabulary" ;
+    dct:description "Research vocabulary connecting FAIR acoustic packages, IFC geometry, measurement datasets, metadata and lifecycle stewardship." .
+
+fairac:FairAcousticPackage a owl:Class ; rdfs:subClassOf dcat:Dataset ; rdfs:label "FAIR Acoustic Package" .
+fairac:IFCGeometry a owl:Class ; rdfs:label "IFC Geometry" .
+fairac:MeasurementDataset a owl:Class ; rdfs:subClassOf dcat:Dataset ; rdfs:label "Measurement Dataset" .
+fairac:MetadataRecord a owl:Class ; rdfs:label "Metadata Record" .
+fairac:Checksum a owl:Class ; rdfs:label "Checksum" .
+
+fairac:hasGeometry a owl:ObjectProperty ; rdfs:domain fairac:FairAcousticPackage ; rdfs:range fairac:IFCGeometry .
+fairac:hasMeasurement a owl:ObjectProperty ; rdfs:domain fairac:FairAcousticPackage ; rdfs:range fairac:MeasurementDataset .
+fairac:hasMetadata a owl:ObjectProperty ; rdfs:domain fairac:FairAcousticPackage ; rdfs:range fairac:MetadataRecord .
+fairac:stewardedBy a owl:ObjectProperty ; rdfs:domain fairac:FairAcousticPackage ; rdfs:label "stewarded by MappingSeries" .
+fairac:latestStewardshipAssertion a owl:ObjectProperty ; rdfs:domain fairac:FairAcousticPackage .
+fairac:hasChecksum a owl:ObjectProperty ; rdfs:domain fairac:FairAcousticPackage ; rdfs:range fairac:Checksum .
+
+fairac:ifcGlobalId a owl:DatatypeProperty ; rdfs:domain fairac:IFCGeometry .
+fairac:material a owl:DatatypeProperty ; rdfs:domain fairac:IFCGeometry .
+fairac:fairStatus a owl:DatatypeProperty ; rdfs:domain fairac:FairAcousticPackage .
+fairac:lifecycleStatus a owl:DatatypeProperty ; rdfs:domain fairac:FairAcousticPackage .
+fairac:findable a owl:DatatypeProperty ; rdfs:domain fairac:FairAcousticPackage ; rdfs:range xsd:boolean .
+fairac:accessible a owl:DatatypeProperty ; rdfs:domain fairac:FairAcousticPackage ; rdfs:range xsd:boolean .
+fairac:interoperable a owl:DatatypeProperty ; rdfs:domain fairac:FairAcousticPackage ; rdfs:range xsd:boolean .
+fairac:reusable a owl:DatatypeProperty ; rdfs:domain fairac:FairAcousticPackage ; rdfs:range xsd:boolean .
+fairac:filePath a owl:DatatypeProperty ; rdfs:domain fairac:Checksum .
+fairac:sha256 a owl:DatatypeProperty ; rdfs:domain fairac:Checksum .

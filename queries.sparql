@@ -1,8 +1,10 @@
 PREFIX map: <https://example.org/hft-acoustic/mapping/vocab/>
+PREFIX fairac: <https://example.org/fair-acoustic/vocab/>
+PREFIX dct: <http://purl.org/dc/terms/>
 PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
 PREFIX prov: <http://www.w3.org/ns/prov#>
 
-# Q1 — Current status of every governed IFC-to-acoustic association
+# LIFECYCLE Q1 — Current status of every governed IFC-to-acoustic association
 SELECT ?series ?wall ?record ?status ?modelVersion ?recordVersion ?review ?rationale WHERE {
   ?series a map:MappingSeries ;
           map:ifcElement ?wall ;
@@ -16,7 +18,7 @@ SELECT ?series ?wall ?record ?status ?modelVersion ?recordVersion ?review ?ratio
   ?statusConcept skos:prefLabel ?status .
 }
 
-# Q2 — Associations that require review
+# LIFECYCLE Q2 — Associations that require review
 SELECT ?wall ?record ?status ?rationale WHERE {
   ?series a map:MappingSeries ; map:currentAssertion ?assertion .
   ?assertion map:ifcElement ?wall ; map:acousticRecord ?record ;
@@ -24,7 +26,7 @@ SELECT ?wall ?record ?status ?rationale WHERE {
   ?statusConcept skos:prefLabel ?status .
 }
 
-# Q3 — Full revision history for an association
+# LIFECYCLE Q3 — Full revision history
 SELECT ?assertion ?status ?modelVersion ?recordVersion ?time ?previous WHERE {
   ?assertion a map:MappingAssertion ;
              map:ifcModelVersion ?modelVersion ;
@@ -36,9 +38,44 @@ SELECT ?assertion ?status ?modelVersion ?recordVersion ?time ?previous WHERE {
 }
 ORDER BY ?time
 
-# Q4 — Validation provenance: which evidence snapshots generated each assertion?
+# LIFECYCLE Q4 — Validation provenance
 SELECT ?assertion ?activity ?usedEvidence ?trigger WHERE {
   ?assertion a map:MappingAssertion ; prov:wasGeneratedBy ?activity .
   ?activity prov:used ?usedEvidence ; map:trigger ?trigger .
 }
 ORDER BY ?assertion ?usedEvidence
+
+# FAIR Q1 — Component library with dual status
+SELECT ?package ?id ?title ?fairStatus ?lifecycleStatus WHERE {
+  ?package a fairac:FairAcousticPackage ;
+           dct:identifier ?id ;
+           dct:title ?title ;
+           fairac:fairStatus ?fairStatus ;
+           fairac:lifecycleStatus ?lifecycleStatus .
+}
+ORDER BY ?title
+
+# FAIR Q2 — IFC geometry ↔ measurement linkage
+SELECT ?package ?globalId ?measurement ?measurementId WHERE {
+  ?package a fairac:FairAcousticPackage ;
+           fairac:hasGeometry ?geometry ;
+           fairac:hasMeasurement ?measurement .
+  ?geometry fairac:ifcGlobalId ?globalId .
+  ?measurement dct:identifier ?measurementId .
+}
+
+# FAIR Q3 — FAIR packages linked to lifecycle MappingSeries
+SELECT ?package ?series ?assertion ?lifecycleStatus WHERE {
+  ?package a fairac:FairAcousticPackage ;
+           fairac:stewardedBy ?series ;
+           fairac:lifecycleStatus ?lifecycleStatus .
+  OPTIONAL { ?series map:currentAssertion ?assertion }
+}
+
+# FAIR Q4 — Reusable package evidence
+SELECT ?package ?creator ?version ?license WHERE {
+  ?package a fairac:FairAcousticPackage ;
+           dct:creator ?creator ;
+           dct:hasVersion ?version ;
+           dct:license ?license .
+}
