@@ -1,124 +1,128 @@
-# MappingSeries Lifecycle Validator
+# FAIR Acoustic Component Platform
 
-> An interactive Streamlit research prototype for validating and auditing the lifecycle link between IFC building elements and external RDF acoustic-performance records.
+> A FAIR-oriented research data management framework and acoustic component library integrating IFC geometry, measurement datasets, RDF metadata and lifecycle stewardship.
 
-## What this is
+## Research thesis
 
-The **MappingSeries Lifecycle Validator** demonstrates how an IFC wall can remain associated with the correct external acoustic record as either source changes over time. It combines native IFC document references, an optional stable MappingSeries URI, IDS-style evidence-readiness checks, bSDD-style terminology alignment, RDF data validation, and PROV-style immutable revision history in one explainable workflow.
+**A FAIR-oriented research data management framework and acoustic component library integrating IFC geometry, measurement datasets and metadata.**
 
-### At a glance
+The repository is an architectural pivot of the existing IFC Acoustic Lifecycle Assessment prototype. The lifecycle implementation is preserved and repositioned as a **FAIR Stewardship Engine** rather than removed.
 
-| Area | What the application does |
-| --- | --- |
-| IFC evidence | Uses element identity, construction family, thickness, materials, and native/Pset record links. |
-| RDF evidence | Checks record identity, acoustic `Rw` value and unit, assembly, source, report, provenance, and availability. |
-| Validation | Separates technical link resolution from semantic data compatibility instead of treating a resolvable URI as sufficient evidence. |
-| Lifecycle | Creates immutable `MappingAssertion` revisions, snapshots, change events, and reviewer decisions without overwriting history. |
-| Interface | Provides editable presets, real-IFC extraction, decision details, a revision timeline, and a provenance graph. |
+## Three information objects
 
-The application is a **thesis/research prototype**, not an acoustic simulation or laboratory measurement tool. Its purpose is to test a governed association-and-validation architecture and make every acceptance decision traceable.
+The platform manages:
 
-## Quick start
+1. **Geometry** — IFC GlobalId, geometry-related evidence, materials, dimensions, semantic classification and spatial context.
+2. **Measurements** — VaBDat-style XML, spectra, vibration data, mode shapes, insulation metrics and other experimental datasets.
+3. **Metadata** — provenance, authorship, method, institution, instrument, version, uncertainty, quality, license, FAIR information and persistent identifiers.
 
-```powershell
-python -m pip install -r requirements.txt
-streamlit run app.py
+These objects are aggregated into a `FairAcousticPackage`.
+
+```text
+IFC Geometry + Measurement Dataset + Metadata
+                       ↓
+              FairAcousticPackage
+                       ↓
+           FAIR Assessment
+                 +
+        Lifecycle Stewardship
 ```
 
-Then open <http://localhost:8501>.
+## FAIR package structure
 
-## Research goal
+A portable package contains:
 
-The prototype makes the architecture visible: IFC evidence, a declared wall-to-record test assignment, optional IFC-native linking, MappingSeries routing, IDS evidence readiness, bSDD-style terminology alignment, RDF evidence, and an append-only MappingAssertion lifecycle.
-
-Automated candidate discovery is outside the current experimental scope. In real-IFC mode, the workflow begins with deterministic controlled assignments between reproducibly sampled real IFC walls and external sample acoustic records. The application labels these assignments as experimental inputs: they are neither extracted from the raw IFC nor inferred from compatibility. The proposed architecture is tested from association declaration through MappingSeries creation, initial validation, immutable MappingAssertion creation, and lifecycle revision.
-
-## Acceptance logic
-
-Acceptance is deliberately conjunctive, not based on URI resolution alone:
-
-`ACCEPTABLE = Link decision RESOLVED AND RDF data decision PASS AND IDS PASS AND bSDD alignment not UNALIGNED AND target approved`
-
-The link decision requires a matching, available native URI and, when enabled, a passing MappingSeries URI. The RDF data decision requires record identity, matching construction family, thickness within tolerance, a numeric `Rw` value, `dB` units, assembly, source, report, provenance, and availability. A changed record therefore creates a new revision; it remains acceptable only when the replacement data passes the same checks. This follows the buildingSMART IDS model of explicit, machine-interpretable requirements and automated compliance results, while the revision snapshots follow PROV-O-style entity/activity provenance.
-
-Changing the record target itself is a separate lifecycle condition: a changed native URI, MappingSeries URI, RDF record URI, or RDF record ID produces `UNMATCHED` and requires explicit reviewer approval, even if the replacement record passes all data checks. This prevents a valid but unreviewed replacement record from silently becoming the accepted association.
-
-A **MappingSeries** is the stable wall-record association anchor derived from the IFC GlobalId and RDF record id. A **MappingAssertion** is one immutable, timestamped assessment revision. It records snapshots, validation results, rationale, review state, and change events without overwriting earlier revisions.
-
-The lifecycle now distinguishes evidence updates from association retargeting. If acoustic values, provenance, availability, or IFC evidence change while the IFC GlobalId and acoustic record identity remain the same, the system appends the next MappingAssertion revision to the existing MappingSeries. If the acoustic `record_id` or canonical record URI changes, the pair identity changes: the system creates a new MappingSeries at revision 1, records that it supersedes the previous series, and never creates a `prov:wasRevisionOf` link across the two series. Identical reruns create no assertion.
-
-IFC-side fields represent identity, construction evidence, native document location, and optional semantic-routing evidence. RDF-side fields own acoustic performance, assembly, source, report, provenance, and availability. The native link checks URI equality and record availability. MappingSeries checks the expected derived URI. IDS is simulated as required and optional field readiness. bSDD alignment is simulated with a small local concept map.
-
-The app includes five selectable wall/component presets and five selectable acoustic-record presets based on component identifiers, construction types, assemblies, and thicknesses listed by [VaBDat Bauteile](https://www.vabdat.de/Bauteil/). The listing does not expose five acoustic `Rw` measurements in its table, so the five `Rw` values are clearly marked prototype sample values. Select a preset, then edit every IFC or RDF registry field directly in the evidence workspace.
-
-Technical resolution is intentionally separate from semantic validity: a URI can resolve while evidence is ambiguous or contradictory. A changed or unavailable record creates a new MappingAssertion; an identical rerun creates no new assertion. The timeline and graph show revisions, snapshots, activities, and change events.
-
-## Proposed architecture
-
-The architecture is a six-stage experimental validation pipeline:
-
-1. **Raw evidence ingestion:** extract IFC wall identity and physical evidence while the acoustic record remains external.
-2. **Controlled assignment:** apply a deterministic, tester-visible wall-to-sample-record fixture. This substitutes for candidate discovery, which is outside scope.
-3. **Stable association identity:** mint a MappingSeries from IFC GlobalId and assigned RDF record ID; an `IfcDocumentReference.Location` is an optional enriched-IFC carrier rather than a prerequisite of the raw model.
-4. **Evidence and validation:** capture immutable IFC, assignment, and RDF snapshots; check link integrity, IDS readiness, bSDD terminology alignment, and RDF acoustic-data compatibility.
-5. **Decision:** produce separate Link and Data decisions followed by semantic status (`ACCEPTABLE`, `AMBIGUOUS`, `INVALID`, `BROKEN`, `UNMATCHED`, or `SEMANTICALLY_STALE`).
-6. **Provenance and governance:** append MappingAssertions, validation activities, change events, tester overrides, and PROV-style revision links without overwriting earlier evidence.
-
-This separation is important: IFC external references answer where external information is identified, IDS answers whether specified IFC information requirements are met, bSDD supports controlled terminology, and PROV describes how an assertion was produced. None of those standards alone defines the complete lifecycle decision for an IFC element associated with an acoustic RDF record.
-
-## Literature and novelty assessment
-
-The defensible novelty claim is a **candidate systems contribution**, not a claim that MappingSeries or MappingAssertion are new standards. The standards and literature reviewed here establish the individual ingredients:
-
-| Source | Established capability | Boundary left open by the source |
-| --- | --- | --- |
-| buildingSMART IFC 4.3, `IfcExternalReference` and `IfcDocumentReference` | URI/identification of external information and document association to IFC objects | No domain-specific semantic compatibility decision or append-only assessment lifecycle |
-| buildingSMART IDS | Machine-interpretable exchange requirements and automated compliance results | Primarily validates IFC delivery requirements; it does not validate the identity and current compatibility of an external acoustic record |
-| buildingSMART bSDD | Shared definitions and controlled concepts for built-environment terminology | Does not by itself decide whether two evidence snapshots justify an association |
-| W3C PROV-O / PROV-DM | Entities, activities, usage, generation, derivation, and revision provenance | Domain rules for IFC-to-acoustic evidence compatibility must be supplied by an application |
-| Pauwels et al., *Semantic web technologies in the architecture, engineering and construction domain: A review*, Automation in Construction 73 (2017), DOI [10.1016/j.autcon.2016.10.003](https://doi.org/10.1016/j.autcon.2016.10.003) | Establishes the role of semantic web and linked-data methods in AEC interoperability | Does not establish this specific two-part link/data acceptance gate with record-target re-approval and immutable MappingAssertion revisions |
-| ISO 10140-2 and ISO 717-1 | Measurement/rating context for airborne sound insulation and `Rw`-type acoustic results | The prototype does not replace laboratory measurement or standards-compliant acoustic calculation |
-
-The potentially novel combination is therefore: **an IFC-native external reference plus a stable MappingSeries identity, explicit two-part link/data acceptance, cross-side evidence comparison, record-target re-approval, and immutable PROV-style MappingAssertion revisions for acoustic lifecycle assessment**. 
-## Source preservation and enrichment
-
-The original IFC and RDF are not overwritten. The IFC remains the source of element identity, geometry-related evidence represented here by editable proxy fields, and the native external document reference. The RDF record remains the source of acoustic performance and registry metadata. On each assessment, the app copies both current inputs into `EvidenceSnapshot` entities and creates a derived `MappingAssertion`. The enriched result is therefore a governed assessment layer, not a mutation of either source. In a production implementation, the snapshots should additionally store source file URI, source version, retrieval time, content hash, and agent/activity identifiers.
-
-### Native IFC link versus Pset link
-
-The **native IFC link** represents the technically authoritative external reference: an IFC `IfcDocumentReference.Location` or equivalent document association used to locate the RDF/acoustic record. The **Pset link** is a semantic enrichment property attached to the wall, such as `Pset_AcousticMapping.RecordURI` and `Pset_AcousticMapping.MappingSeriesURI`. It makes the mapping discoverable in IFC workflows and carries the semantic context, but it does not replace the native document reference or the external record. The validator requires both channels to agree with the RDF target when Pset validation is enabled. A native match with a Pset mismatch is therefore not accepted.
-
-### Queries in the workflow
-
-The **link-validation query** is a precondition query: it finds a wall, native URI, RDF URI, and MappingSeries and returns only URI-consistent candidates. It supports technical reachability and candidate discovery; it does not prove acoustic compatibility. The **lifecycle query** is an audit query: it retrieves MappingAssertion revisions and their `prov:wasRevisionOf` links in revision order. It supports traceability, comparison of evidence snapshots, and reconstruction of how the current decision was produced. In this prototype the query definitions are shown in the Graph tab, while the checks run in Python over the in-memory evidence state.
-
-### Overall workflow
-
-`Raw real IFC + external sample RDF -> reproducible wall sampling -> deterministic controlled assignment -> tester confirmation/override -> MappingSeries creation -> IDS/bSDD and RDF-data checks -> Link/Data decision -> immutable MappingAssertion + IFC/assignment/RDF snapshots -> lifecycle change tests`
-
-The assignment is a declared experimental fixture, not a claim that the sample record already belongs to the wall. Candidate discovery and ranking are excluded. Optional IFC enrichment can later project an approved record URI or MappingSeries anchor into a derived IFC copy, while the source IFC remains unchanged.
-
-The enrichment is consequently **derived and reversible**: a consumer can inspect the original source fields, assignment protocol, exact evidence used, validation rules, decision, and provenance chain independently. This is stronger than copying `Rw` into IFC without recording where it came from or which validation activity justified it.
-
-## Real IFC mode
-
-The Evidence & rules tab defaults to `data/HFT_Bau1_2026.02.18.ifc` and can load another IFC through IfcOpenShell. The extractor reads GlobalId, IFC entity type, name, material-layer names, summed layer thickness where available, filename, and source hash. It reproducibly samples walls with seed `42`.
-
-After loading, protocol `real-ifc-sample-round-robin-v1` deterministically allocates the ordered external sample records across the sampled walls and immediately displays the complete assignment register. Selecting **Use selected experimental pair** applies the extracted wall evidence and its assigned external record atomically. The generated URI fields are labelled as controlled test inputs, not values found in the raw IFC. A tester may change the record selection; this is stored as an assignment override and can trigger a lifecycle revision.
-
-
-## Run
-
-```powershell
-python -m pip install -r requirements.txt
-streamlit run app.py
+```text
+package.zip
+├── geometry.ifc
+├── measurement.<source-extension>
+├── metadata.ttl
+└── manifest.json
 ```
 
-The app uses in-memory `st.session_state`; use the download control for a compact Turtle representation when needed. The prototype supports real IFC extraction through IfcOpenShell, while the acoustic RDF record remains external and is currently supplied through the editable registry fields.
+The manifest includes package identity, resource references, FAIR state, lifecycle state and SHA-256 checksums.
 
-## Reference standards
+## FAIR assessment
 
-- [buildingSMART Information Delivery Specification](https://www.buildingsmart.org/standards/bsi-standards/information-delivery-specification-ids/): computer-interpretable exchange requirements and automated compliance checking.
-- [buildingSMART IDS technical description](https://technical.buildingsmart.org/projects/information-delivery-specification-ids/): requirements for objects, properties, values, and units.
-- [W3C PROV-O](https://www.w3.org/TR/prov-o/): provenance entities, activities, usage, generation, and revision relationships.
-- [VaBDat Bauteile](https://www.vabdat.de/Bauteil/): component identifiers, assemblies, construction types, and thickness metadata used by the presets.
+The platform evaluates four dimensions with criterion-level evidence:
+
+- **Findable** — persistent identifier, searchable metadata, IFC GlobalId.
+- **Accessible** — dataset URI, measurement availability, metadata accessibility.
+- **Interoperable** — IFC linkage, RDF linkage, standard representations.
+- **Reusable** — provenance, version, quality information, reuse license and measurement context.
+
+States include:
+
+`FAIR_READY`, `PARTIALLY_FAIR`, `NOT_FINDABLE`, `NOT_ACCESSIBLE`, `NOT_INTEROPERABLE`, `NOT_REUSABLE`.
+
+The individual F/A/I/R results are always retained so a package can expose multiple deficiencies rather than hiding them behind one score.
+
+## Lifecycle stewardship
+
+Existing lifecycle functionality remains part of the architecture. The current validation and revision mechanisms become the stewardship layer that verifies whether package relationships remain technically resolvable, semantically defensible and version-aware.
+
+Existing lifecycle states remain valid, including:
+
+`ACCEPTABLE`, `STALE` / `SEMANTICALLY_STALE`, `BROKEN`, `INVALID`, `AMBIGUOUS`, `MULTIPLE_CANDIDATES`, `UNMATCHED`.
+
+FAIR state and lifecycle state are independent. For example, a package may be `FAIR_READY` but `SEMANTICALLY_STALE`, or `PARTIALLY_FAIR` while the current association is `ACCEPTABLE`.
+
+## Streamlit workspaces
+
+The revised UI is organized around four research workflows:
+
+1. **FAIR Package Builder** — upload IFC and measurements, inspect IFC evidence, create metadata and generate a package.
+2. **FAIR Assessment** — inspect Findable, Accessible, Interoperable and Reusable checks on a dedicated dashboard.
+3. **Lifecycle Stewardship** — reuse the existing three-tier validation engine for association monitoring and semantic validity.
+4. **Component Library** — search packages, inspect metadata and export portable ZIP packages.
+
+## Architecture
+
+New FAIR functionality lives in `fair_platform/` and wraps the existing code rather than replacing it.
+
+```text
+fair_platform/
+├── models.py
+├── assessment.py
+├── package_builder.py
+├── manifest.py
+├── metadata.py
+├── catalog.py
+└── export.py
+
+lifecycle_engine/              # preserved lifecycle implementation
+dashboard/backend/             # adapters and existing validation services
+dashboard/pages/               # FAIR workspaces
+metadata/fair_acoustic.ttl     # FAIR acoustic vocabulary
+```
+
+The existing `MappingSeries`, `MappingAssertion`, RDFLib/SPARQL, IFC/IfcOpenShell, provenance, versioning and semantic association logic remain available as stewardship mechanisms.
+
+## Run the FAIR UI
+
+```bash
+python -m pip install -r dashboard/requirements.txt
+streamlit run dashboard/app.py
+```
+
+The original root-level lifecycle prototype remains in the repository for reproducibility and comparison.
+
+## Research design principle
+
+The source IFC and source measurement datasets are not overwritten. FAIR packaging and lifecycle assessment create a governed metadata/stewardship layer around them. This keeps source evidence independently inspectable while allowing derived package status, provenance, version history and association decisions to evolve.
+
+## Current implementation status
+
+The FAIR layer currently provides:
+
+- `FairAcousticPackage` aggregate model
+- explainable F/A/I/R evaluation
+- RDF/Turtle metadata generation
+- package manifest generation
+- SHA-256 package checksums
+- ZIP export
+- IFC inspection in the package builder
+- lifecycle-engine reuse through the Stewardship workspace
+- in-session searchable component library
+
+Persistent catalog storage and repository-grade persistent identifiers are intentionally left as extension points rather than simulated as production infrastructure.

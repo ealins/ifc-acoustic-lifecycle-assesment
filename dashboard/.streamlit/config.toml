@@ -7,3 +7,11 @@ level = "error"
 [server]
 headless = true
 port = 8501
+
+[theme]
+base = "light"
+primaryColor = "#0F766E"
+backgroundColor = "#F6F8FB"
+secondaryBackgroundColor = "#FFFFFF"
+textColor = "#172033"
+font = "sans serif"
