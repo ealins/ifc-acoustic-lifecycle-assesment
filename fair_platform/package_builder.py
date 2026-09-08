@@ -4,13 +4,12 @@ import mimetypes
 from pathlib import Path
 from uuid import uuid4
 
-from .assessment import apply_assessment
-from .export import refresh_derived_assets
+from .export import finalize_package
 from .models import FairAcousticPackage
 
 
 class FairPackageBuilder:
-    """Create FAIR package aggregates without mutating source IFC or measurement data."""
+    """Build package aggregates while keeping the original IFC and measurement bytes unchanged."""
 
     def build(
         self,
@@ -30,6 +29,11 @@ class FairPackageBuilder:
         quality_information: dict | None = None,
         metadata: dict | None = None,
     ) -> FairAcousticPackage:
+        if not geometry_bytes:
+            raise ValueError("IFC geometry is required")
+        if not measurement_bytes:
+            raise ValueError("A measurement dataset is required")
+
         package_id = f"FAP-{uuid4().hex[:10].upper()}"
         package_identifier = identifier or f"https://example.org/fair-acoustic/package/{package_id}"
         measurement_suffix = Path(measurement_filename).suffix.lower() or ".bin"
@@ -58,12 +62,7 @@ class FairPackageBuilder:
             ifc_global_id=ifc_global_id or None,
             dataset_uri=dataset_uri or None,
             metadata=package_metadata,
-            assets={
-                "geometry.ifc": geometry_bytes,
-                measurement_reference: measurement_bytes,
-            },
+            assets={"geometry.ifc": bytes(geometry_bytes), measurement_reference: bytes(measurement_bytes)},
         )
-
-        apply_assessment(package)
-        refresh_derived_assets(package)
+        finalize_package(package)
         return package

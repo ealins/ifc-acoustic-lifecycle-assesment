@@ -1,0 +1,27 @@
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix fairac: <https://example.org/fair-acoustic/vocab/> .
+@prefix dct: <http://purl.org/dc/terms/> .
+@prefix dcat: <http://www.w3.org/ns/dcat#> .
+
+fairac:FairAcousticPackageShape
+    a sh:NodeShape ;
+    sh:targetClass fairac:FairAcousticPackage ;
+    sh:property [ sh:path dct:identifier ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:property [ sh:path dct:hasVersion ; sh:minCount 1 ] ;
+    sh:property [ sh:path fairac:hasGeometry ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:property [ sh:path fairac:hasMeasurement ; sh:minCount 1 ] ;
+    sh:property [ sh:path fairac:hasMetadata ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:property [ sh:path fairac:fairStatus ; sh:minCount 1 ] ;
+    sh:property [ sh:path fairac:lifecycleStatus ; sh:minCount 1 ] .
+
+fairac:IFCGeometryShape
+    a sh:NodeShape ;
+    sh:targetClass fairac:IFCGeometry ;
+    sh:property [ sh:path fairac:ifcGlobalId ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:property [ sh:path dct:format ; sh:hasValue "IFC" ] .
+
+fairac:MeasurementDatasetShape
+    a sh:NodeShape ;
+    sh:targetClass fairac:MeasurementDataset ;
+    sh:property [ sh:path dct:identifier ; sh:minCount 1 ] ;
+    sh:property [ sh:path dct:format ; sh:minCount 1 ] .
