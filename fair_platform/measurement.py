@@ -4,9 +4,15 @@ from io import BytesIO
 import json
 from pathlib import Path
 import re
-import xml.etree.ElementTree as ET
 
 import pandas as pd
+
+try:
+    from defusedxml import ElementTree as SafeET
+except ImportError:  # pragma: no cover - dependency is declared for deployed environments
+    import xml.etree.ElementTree as SafeET
+
+from .research_object import MeasurementOrigin
 
 
 _SIGNAL_PATTERNS = {
@@ -15,6 +21,9 @@ _SIGNAL_PATTERNS = {
     "vibration": re.compile(r"accel|velocity|vibration|displacement", re.I),
     "mode_shape": re.compile(r"mode|eigen", re.I),
     "uncertainty": re.compile(r"uncert|sigma|std|confidence", re.I),
+    "absorption": re.compile(r"absorp|alpha|impedance", re.I),
+    "impulse_response": re.compile(r"impulse|reverber|rt60|edt", re.I),
+    "transfer_function": re.compile(r"transfer|frf|phase|amplitude", re.I),
 }
 
 
@@ -23,8 +32,32 @@ def _signals(labels: list[str]) -> list[str]:
     return [name for name, pattern in _SIGNAL_PATTERNS.items() if pattern.search(joined)]
 
 
-def _base(filename: str, payload: bytes) -> dict:
+def _normalize_origin(value: str | MeasurementOrigin | None) -> MeasurementOrigin:
+    if isinstance(value, MeasurementOrigin):
+        return value
+    text = str(value or "").strip().lower().replace(" ", "_")
+    aliases = {
+        "measurement": MeasurementOrigin.RAW_MEASUREMENT,
+        "raw": MeasurementOrigin.RAW_MEASUREMENT,
+        "processed": MeasurementOrigin.PROCESSED_MEASUREMENT,
+        "derived": MeasurementOrigin.DERIVED_RESULT,
+        "reference": MeasurementOrigin.REFERENCE_VALUE,
+        "manufacturer": MeasurementOrigin.MANUFACTURER_VALUE,
+        "prediction": MeasurementOrigin.PREDICTED_VALUE,
+        "predicted": MeasurementOrigin.PREDICTED_VALUE,
+        "simulation": MeasurementOrigin.SIMULATION_RESULT,
+    }
+    if text in aliases:
+        return aliases[text]
+    try:
+        return MeasurementOrigin(text)
+    except ValueError:
+        return MeasurementOrigin.UNKNOWN
+
+
+def _base(filename: str, payload: bytes, declared_origin: str | MeasurementOrigin | None = None) -> dict:
     suffix = Path(filename).suffix.lower()
+    origin = _normalize_origin(declared_origin)
     return {
         "source_filename": filename,
         "extension": suffix,
@@ -34,29 +67,53 @@ def _base(filename: str, payload: bytes) -> dict:
         "summary": "",
         "details": {},
         "semantic_signals": [],
+        "origin_classification": origin.value,
+        "origin_basis": "user-declared" if origin != MeasurementOrigin.UNKNOWN else "not declared",
         "warnings": [],
     }
 
 
-def _inspect_xml(filename: str, payload: bytes) -> dict:
-    result = _base(filename, payload)
-    root = ET.fromstring(payload)
+def _leaf_values(root, limit: int = 60) -> list[dict]:
+    rows: list[dict] = []
+    for node in root.iter():
+        if list(node):
+            continue
+        text = (node.text or "").strip()
+        if not text:
+            continue
+        tag = str(node.tag).split("}")[-1]
+        value: object = text
+        try:
+            value = float(text.replace(",", "."))
+        except ValueError:
+            pass
+        rows.append({"field": tag, "value": value, "attributes": dict(node.attrib)})
+        if len(rows) >= limit:
+            break
+    return rows
+
+
+def _inspect_xml(filename: str, payload: bytes, declared_origin=None) -> dict:
+    result = _base(filename, payload, declared_origin)
+    root = SafeET.fromstring(payload)
     elements = list(root.iter())
     tags = sorted({str(node.tag).split("}")[-1] for node in elements})
     attributes = sorted({key for node in elements for key in node.attrib.keys()})
+    values = _leaf_values(root)
     result["details"] = {
         "root_element": str(root.tag).split("}")[-1],
         "element_count": len(elements),
         "unique_tags": tags[:80],
         "attribute_names": attributes[:80],
+        "parsed_values": values,
     }
     result["semantic_signals"] = _signals(tags + attributes)
     result["summary"] = f"XML dataset with root '{result['details']['root_element']}' and {len(elements)} element(s)"
     return result
 
 
-def _inspect_csv(filename: str, payload: bytes) -> dict:
-    result = _base(filename, payload)
+def _inspect_csv(filename: str, payload: bytes, declared_origin=None) -> dict:
+    result = _base(filename, payload, declared_origin)
     frame = pd.read_csv(BytesIO(payload), nrows=5000)
     columns = [str(column) for column in frame.columns]
     numeric = [str(column) for column in frame.select_dtypes(include="number").columns]
@@ -64,15 +121,15 @@ def _inspect_csv(filename: str, payload: bytes) -> dict:
         "sampled_rows": int(len(frame)),
         "columns": columns,
         "numeric_columns": numeric,
-        "preview": frame.head(5).where(pd.notnull(frame), None).to_dict(orient="records"),
+        "preview": frame.head(8).where(pd.notnull(frame), None).to_dict(orient="records"),
     }
     result["semantic_signals"] = _signals(columns)
     result["summary"] = f"CSV dataset with {len(columns)} column(s); inspected {len(frame)} row(s)"
     return result
 
 
-def _inspect_json(filename: str, payload: bytes) -> dict:
-    result = _base(filename, payload)
+def _inspect_json(filename: str, payload: bytes, declared_origin=None) -> dict:
+    result = _base(filename, payload, declared_origin)
     obj = json.loads(payload.decode("utf-8"))
     if isinstance(obj, dict):
         keys = [str(key) for key in obj.keys()]
@@ -92,16 +149,15 @@ def _inspect_json(filename: str, payload: bytes) -> dict:
     return result
 
 
-def _inspect_hdf5(filename: str, payload: bytes) -> dict:
-    result = _base(filename, payload)
+def _inspect_hdf5(filename: str, payload: bytes, declared_origin=None) -> dict:
+    result = _base(filename, payload, declared_origin)
     try:
         import h5py
-    except ImportError as exc:  # pragma: no cover - dependency is installed in the app image
+    except ImportError as exc:  # pragma: no cover
         result["valid"] = False
         result["warnings"].append(f"h5py unavailable: {exc}")
         result["summary"] = "HDF5 file packaged, but structural inspection is unavailable"
         return result
-
     datasets: list[dict] = []
     groups: list[str] = []
     with h5py.File(BytesIO(payload), "r") as handle:
@@ -118,8 +174,8 @@ def _inspect_hdf5(filename: str, payload: bytes) -> dict:
     return result
 
 
-def _inspect_vtk(filename: str, payload: bytes) -> dict:
-    result = _base(filename, payload)
+def _inspect_vtk(filename: str, payload: bytes, declared_origin=None) -> dict:
+    result = _base(filename, payload, declared_origin)
     text = payload.decode("utf-8", errors="replace")
     lines = [line.strip() for line in text.splitlines() if line.strip()]
     header = lines[:4]
@@ -147,8 +203,8 @@ def _inspect_vtk(filename: str, payload: bytes) -> dict:
     return result
 
 
-def _inspect_text(filename: str, payload: bytes) -> dict:
-    result = _base(filename, payload)
+def _inspect_text(filename: str, payload: bytes, declared_origin=None) -> dict:
+    result = _base(filename, payload, declared_origin)
     text = payload.decode("utf-8", errors="replace")
     lines = text.splitlines()
     tokens = re.findall(r"[A-Za-z_][A-Za-z0-9_./-]{2,}", " ".join(lines[:200]))
@@ -158,46 +214,38 @@ def _inspect_text(filename: str, payload: bytes) -> dict:
     return result
 
 
-def inspect_measurement(filename: str, payload: bytes) -> dict:
-    """Return a serializable structural inspection of an external measurement dataset.
+def inspect_measurement(filename: str, payload: bytes, declared_origin: str | MeasurementOrigin | None = None) -> dict:
+    """Inspect a supported acoustic asset without inventing scientific semantics.
 
-    The inspector does not invent acoustic semantics. It exposes the structure that can be
-    verified locally and records detected signal names as hints for researchers.
+    Origin is explicit user/repository metadata. Structural signal detection is a hint only
+    and never upgrades an unknown-origin record into a measured or predicted record.
     """
     if not payload:
-        return {
-            "source_filename": filename,
-            "extension": Path(filename).suffix.lower(),
-            "size_bytes": 0,
-            "valid": False,
-            "format": "unknown",
-            "summary": "Empty measurement payload",
-            "details": {},
-            "semantic_signals": [],
-            "warnings": ["Measurement payload is empty"],
-        }
-
+        result = _base(filename, payload, declared_origin)
+        result.update({"valid": False, "format": "unknown", "summary": "Empty acoustic data payload"})
+        result["warnings"].append("Acoustic data payload is empty")
+        return result
     suffix = Path(filename).suffix.lower()
     try:
         if suffix == ".xml":
-            return _inspect_xml(filename, payload)
+            return _inspect_xml(filename, payload, declared_origin)
         if suffix == ".csv":
-            return _inspect_csv(filename, payload)
+            return _inspect_csv(filename, payload, declared_origin)
         if suffix == ".json":
-            return _inspect_json(filename, payload)
+            return _inspect_json(filename, payload, declared_origin)
         if suffix in {".h5", ".hdf5"}:
-            return _inspect_hdf5(filename, payload)
+            return _inspect_hdf5(filename, payload, declared_origin)
         if suffix == ".vtk":
-            return _inspect_vtk(filename, payload)
+            return _inspect_vtk(filename, payload, declared_origin)
         if suffix in {".txt", ".dat", ".ttl", ".rdf"}:
-            return _inspect_text(filename, payload)
-        result = _base(filename, payload)
-        result["summary"] = "Binary measurement asset preserved without format-specific parsing"
+            return _inspect_text(filename, payload, declared_origin)
+        result = _base(filename, payload, declared_origin)
+        result["summary"] = "Binary acoustic data asset preserved without format-specific parsing"
         result["warnings"].append("No format-specific inspector is registered for this extension")
         return result
     except Exception as exc:
-        result = _base(filename, payload)
+        result = _base(filename, payload, declared_origin)
         result["valid"] = False
-        result["summary"] = f"Measurement inspection failed for {suffix or 'unknown format'}"
+        result["summary"] = f"Acoustic data inspection failed for {suffix or 'unknown format'}"
         result["warnings"].append(str(exc))
         return result
