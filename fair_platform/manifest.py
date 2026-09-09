@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 from typing import Any
 
 from .models import FairAcousticPackage
@@ -57,12 +56,30 @@ def build_manifest(package: FairAcousticPackage) -> dict[str, Any]:
             "packaged": True,
         }
 
+    def supplementary(records_list: list[dict] | None) -> list[dict[str, Any]]:
+        result: list[dict[str, Any]] = []
+        for record in records_list or []:
+            path = str(record.get("path") or "")
+            indexed = dict(asset_index.get(path, {}))
+            if not indexed:
+                indexed = {
+                    "path": path,
+                    "asset_id": record.get("asset_id") or f"asset:{path}",
+                    "role": record.get("role"),
+                    "media_type": record.get("media_type") or "application/octet-stream",
+                    "size_bytes": len(package.assets.get(path, b"")),
+                    "checksum": package.checksums.get(path),
+                    "original_filename": record.get("original_filename") or record.get("source_filename"),
+                    "version": record.get("version"),
+                    "packaged": path in package.assets,
+                }
+            result.append(indexed)
+        return result
+
     geometry_resource = {
         **asset_index.get(package.geometry_reference, {}),
-        # Historical fields retained for old clients/tests.
         "ifc_global_id": package.ifc_global_id,
         "source_filename": package.metadata.get("source_geometry_filename"),
-        # New profile evidence remains additive.
         "ifc_schema": package.metadata.get("geometry_ifc_schema"),
         "ifc_entity_type": package.metadata.get("geometry_ifc_class"),
         "component_type": package.metadata.get("geometry_component_type") or package.metadata.get("geometry_semantic_classification"),
@@ -78,8 +95,6 @@ def build_manifest(package: FairAcousticPackage) -> dict[str, Any]:
     }
 
     return {
-        # Kept at v2 for backward compatibility. Research-object evolution is
-        # described separately so this derived manifest is not a competing authority.
         "schema": "https://example.org/fair-acoustic/manifest/v2",
         "manifest_profile": "acoustic-component-research-object-compatibility-v3",
         "object_type": package.object_type,
@@ -113,8 +128,14 @@ def build_manifest(package: FairAcousticPackage) -> dict[str, Any]:
         },
         "asset_index": asset_index,
         "relationships": package.relationships,
-        "research": {"context": package.research_context},
-        "simulation": {"context": package.simulation_context},
+        "research": {
+            "context": package.research_context,
+            "resources": supplementary(package.metadata.get("research_resources")),
+        },
+        "simulation": {
+            "context": package.simulation_context,
+            "resources": supplementary(package.metadata.get("simulation_resources")),
+        },
         "fair_support": {
             "status": package.fair_support_status,
             "assessment": package.fair_support_assessment,
