@@ -6,3 +6,5 @@ plotly>=5.20.0
 graphviz>=0.20.0
 pyshacl>=0.30
 h5py>=3.11
+flask>=3.0
+flask-cors>=4.0
