@@ -3,25 +3,37 @@
 @prefix dct: <http://purl.org/dc/terms/> .
 @prefix dcat: <http://www.w3.org/ns/dcat#> .
 
-fairac:FairAcousticPackageShape
+# Prototype shapes for the Acoustic Component Research-Object Profile.
+# These shapes validate structural metadata only; they do not certify FAIRness
+# or the scientific validity/suitability of acoustic values.
+
+fairac:AcousticComponentResearchObjectShape
     a sh:NodeShape ;
-    sh:targetClass fairac:FairAcousticPackage ;
+    sh:targetClass fairac:AcousticComponentResearchObject ;
     sh:property [ sh:path dct:identifier ; sh:minCount 1 ; sh:maxCount 1 ] ;
     sh:property [ sh:path dct:hasVersion ; sh:minCount 1 ] ;
     sh:property [ sh:path fairac:hasGeometry ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:property [ sh:path fairac:hasIfcComponent ; sh:minCount 1 ; sh:maxCount 1 ] ;
     sh:property [ sh:path fairac:hasMeasurement ; sh:minCount 1 ] ;
     sh:property [ sh:path fairac:hasMetadata ; sh:minCount 1 ; sh:maxCount 1 ] ;
-    sh:property [ sh:path fairac:fairStatus ; sh:minCount 1 ] ;
+    sh:property [ sh:path fairac:fairSupportStatus ; sh:minCount 1 ] ;
     sh:property [ sh:path fairac:lifecycleStatus ; sh:minCount 1 ] .
 
-fairac:IFCGeometryShape
+fairac:IfcComponentShape
     a sh:NodeShape ;
-    sh:targetClass fairac:IFCGeometry ;
+    sh:targetClass fairac:IfcComponent ;
     sh:property [ sh:path fairac:ifcGlobalId ; sh:minCount 1 ; sh:maxCount 1 ] ;
-    sh:property [ sh:path dct:format ; sh:hasValue "IFC" ] .
+    sh:property [ sh:path fairac:sourceAsset ; sh:minCount 1 ] .
 
 fairac:MeasurementDatasetShape
     a sh:NodeShape ;
     sh:targetClass fairac:MeasurementDataset ;
     sh:property [ sh:path dct:identifier ; sh:minCount 1 ] ;
     sh:property [ sh:path dct:format ; sh:minCount 1 ] .
+
+fairac:GeometryMeasurementRelationshipShape
+    a sh:NodeShape ;
+    sh:targetClass fairac:GeometryMeasurementRelationship ;
+    sh:property [ sh:path fairac:subjectComponent ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:property [ sh:path fairac:objectMeasurement ; sh:minCount 1 ; sh:maxCount 1 ] ;
+    sh:property [ sh:path fairac:relationshipType ; sh:minCount 1 ] .

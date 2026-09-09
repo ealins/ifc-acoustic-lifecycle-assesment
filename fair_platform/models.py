@@ -11,6 +11,11 @@ def utc_now() -> str:
 
 
 class FairStatus(str, Enum):
+    """Legacy FAIR labels retained for backward compatibility.
+
+    New user-facing evaluation uses fair_support_status and does not claim certification.
+    """
+
     FAIR_READY = "FAIR_READY"
     PARTIALLY_FAIR = "PARTIALLY_FAIR"
     NOT_FINDABLE = "NOT_FINDABLE"
@@ -93,6 +98,13 @@ class FairAssessmentResult:
 
 @dataclass
 class FairAcousticPackage:
+    """Backward-compatible storage model for an acoustic component research object.
+
+    The in-memory model is authoritative. RO-Crate JSON-LD is the principal portable
+    representation, metadata.ttl represents domain/provenance relationships, and
+    manifest.json remains a simplified application manifest.
+    """
+
     package_id: str
     geometry_reference: str
     measurement_reference: str
@@ -102,15 +114,22 @@ class FairAcousticPackage:
     identifier: str
     creator: Optional[str] = None
     created: str = field(default_factory=utc_now)
+    modified: Optional[str] = None
     license: Optional[str] = None
     measurement_context: dict[str, Any] = field(default_factory=dict)
     quality_information: dict[str, Any] = field(default_factory=dict)
     research_context: dict[str, Any] = field(default_factory=dict)
     simulation_context: dict[str, Any] = field(default_factory=dict)
+    access_context: dict[str, Any] = field(default_factory=dict)
     ifc_global_id: Optional[str] = None
     dataset_uri: Optional[str] = None
     mapping_series_uri: Optional[str] = None
     latest_mapping_assertion_uri: Optional[str] = None
+    research_object_profile: str = "https://example.org/fair-acoustic/profile/acoustic-component-ro/0.1"
+    relationships: list[dict[str, Any]] = field(default_factory=list)
+    asset_records: list[dict[str, Any]] = field(default_factory=list)
+    fair_support_status: str = "ASSESSMENT_INCOMPLETE"
+    scientific_suitability_status: str = "NOT_ASSESSED"
     fair_status: FairStatus = FairStatus.PARTIALLY_FAIR
     lifecycle_status: str = "UNASSESSED"
     findable: bool = False
@@ -119,7 +138,10 @@ class FairAcousticPackage:
     reusable: bool = False
     metadata: dict[str, Any] = field(default_factory=dict)
     fair_assessment: dict[str, Any] = field(default_factory=dict)
+    fair_support_assessment: dict[str, Any] = field(default_factory=dict)
     stewardship_history: list[dict[str, Any]] = field(default_factory=list)
+    reassessment_triggers: list[dict[str, Any]] = field(default_factory=list)
+    validation_report: dict[str, Any] = field(default_factory=dict)
     checksums: dict[str, str] = field(default_factory=dict)
     assets: dict[str, bytes] = field(default_factory=dict, repr=False)
 
@@ -131,10 +153,15 @@ class FairAcousticPackage:
     def title(self) -> str:
         return str(self.metadata.get("title") or self.metadata.get("measurement_identifier") or self.package_id)
 
+    @property
+    def object_type(self) -> str:
+        return "AcousticComponentResearchObject"
+
     def to_dict(self, include_assets: bool = False) -> dict[str, Any]:
         data = asdict(self)
         data["fair_status"] = self.fair_status.value
         data["lifecycle_display_status"] = self.lifecycle_display_status
+        data["object_type"] = self.object_type
         if not include_assets:
             data.pop("assets", None)
         return data
@@ -145,3 +172,14 @@ class FairAcousticPackage:
         values = {key: value for key, value in payload.items() if key in allowed and key != "assets"}
         values["fair_status"] = FairStatus(values.get("fair_status", FairStatus.PARTIALLY_FAIR.value))
         return cls(**values)
+
+
+@dataclass
+class AcousticComponentResearchObject(FairAcousticPackage):
+    """Preferred domain name for new code; inherits legacy package compatibility."""
+
+    pass
+
+
+# Compatibility alias for terminology used in thesis text and older integrations.
+AcousticComponentPackage = AcousticComponentResearchObject
