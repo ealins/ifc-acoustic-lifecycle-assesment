@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import json
 import re
-from pathlib import Path
+import shutil
+from pathlib import Path, PurePosixPath
 
 from .export import finalize_package
 from .models import FairAcousticPackage
@@ -20,14 +21,21 @@ class PackageRepository:
             raise ValueError("Unsafe package identifier")
         return self.root / package_id
 
+    @staticmethod
+    def _asset_path(folder: Path, name: str) -> Path:
+        relative = PurePosixPath(str(name).replace("\\", "/"))
+        if relative.is_absolute() or not relative.parts or any(part in {"", ".", ".."} for part in relative.parts):
+            raise ValueError(f"Unsafe package asset path: {name}")
+        return folder.joinpath(*relative.parts)
+
     def save(self, package: FairAcousticPackage) -> Path:
         finalize_package(package)
         folder = self._folder(package.package_id)
         folder.mkdir(parents=True, exist_ok=True)
         for name, content in package.assets.items():
-            if Path(name).name != name:
-                raise ValueError(f"Package asset must be a filename, not a path: {name}")
-            (folder / name).write_bytes(content)
+            path = self._asset_path(folder, name)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(content)
         (folder / "package.json").write_text(
             json.dumps(package.to_dict(), indent=2, ensure_ascii=False), encoding="utf-8"
         )
@@ -38,8 +46,8 @@ class PackageRepository:
         payload = json.loads((folder / "package.json").read_text(encoding="utf-8"))
         package = FairAcousticPackage.from_dict(payload)
         package.assets = {
-            path.name: path.read_bytes()
-            for path in folder.iterdir()
+            path.relative_to(folder).as_posix(): path.read_bytes()
+            for path in folder.rglob("*")
             if path.is_file() and path.name != "package.json"
         }
         return package
@@ -56,9 +64,5 @@ class PackageRepository:
 
     def delete(self, package_id: str) -> None:
         folder = self._folder(package_id)
-        if not folder.exists():
-            return
-        for path in folder.iterdir():
-            if path.is_file():
-                path.unlink()
-        folder.rmdir()
+        if folder.exists():
+            shutil.rmtree(folder)
