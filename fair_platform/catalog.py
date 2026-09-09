@@ -31,6 +31,8 @@ class MetadataCatalog:
         measurement_type: str | None = None,
         *,
         fair_support_status: str | None = None,
+        metadata_completeness: str | None = None,
+        dataset_origin: str | None = None,
         ifc_type: str | None = None,
         relationship_type: str | None = None,
     ) -> list[FairAcousticPackage]:
@@ -45,10 +47,9 @@ class MetadataCatalog:
                 package.title,
                 str(package.metadata),
                 str(package.measurement_context),
-                str(package.research_context),
-                str(package.simulation_context),
                 str(package.provenance),
                 str(package.relationships),
+                str(package.acoustic_datasets),
             ]).lower()
             if needle and needle not in haystack:
                 continue
@@ -56,10 +57,15 @@ class MetadataCatalog:
                 continue
             if fair_support_status and fair_support_status != "ALL" and package.fair_support_status != fair_support_status:
                 continue
+            if metadata_completeness and metadata_completeness != "ALL" and package.metadata_completeness_status != metadata_completeness:
+                continue
             if lifecycle_status and lifecycle_status != "ALL" and package.lifecycle_display_status != lifecycle_status and package.lifecycle_status != lifecycle_status:
                 continue
             current_type = str(package.measurement_context.get("measurement_type", ""))
             if measurement_type and measurement_type != "ALL" and current_type != measurement_type:
+                continue
+            current_origin = str(package.measurement_context.get("origin_classification") or (package.metadata.get("measurement_inspection") or {}).get("origin_classification") or "")
+            if dataset_origin and dataset_origin != "ALL" and current_origin != dataset_origin:
                 continue
             current_ifc_type = str(package.metadata.get("geometry_ifc_class", ""))
             if ifc_type and ifc_type != "ALL" and current_ifc_type != ifc_type:
@@ -69,6 +75,25 @@ class MetadataCatalog:
                 continue
             results.append(package)
         return results
+
+    def entry(self, package: FairAcousticPackage) -> dict[str, str | None]:
+        """Return the metadata-centered library card fields used by UI/tests."""
+        relationship = package.relationships[0] if package.relationships else {}
+        return {
+            "package_title": package.title,
+            "package_identifier": package.identifier or package.package_id,
+            "ifc_global_id": package.ifc_global_id,
+            "ifc_component_type": package.metadata.get("geometry_ifc_class"),
+            "acoustic_dataset_identifier": package.metadata.get("measurement_identifier"),
+            "dataset_origin": package.measurement_context.get("origin_classification") or (package.metadata.get("measurement_inspection") or {}).get("origin_classification"),
+            "record_type": package.measurement_context.get("measurement_type"),
+            "metadata_completeness": package.metadata_completeness_status,
+            "fair_support": package.fair_support_status,
+            "relationship_status": package.lifecycle_display_status,
+            "relationship_type": relationship.get("relationship_type"),
+            "package_version": package.version,
+            "last_review_date": relationship.get("last_reviewed_at"),
+        }
 
     def sparql(self, query: str) -> list[dict[str, str | None]]:
         rows = []
