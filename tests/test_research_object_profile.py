@@ -62,6 +62,9 @@ def _relationship(global_id: str = "2qL6OSUnz6ZAzEOn1HxeD2", measurement_id: str
 
 def complete_package(*, external_status: str = "REACHABLE"):
     relationship = _relationship()
+    access_context = {"access_rights": "open", "external_uri_status": external_status}
+    if external_status not in {"NOT_TESTED", "UNKNOWN", "NOT_VERIFIED"}:
+        access_context["external_uri_checked_at"] = "2026-09-09T12:00:00Z"
     return FairPackageBuilder().build(
         b"ISO-10303-21;\nHEADER;\nFILE_SCHEMA(('IFC4'));\nENDSEC;\nDATA;\nENDSEC;\nEND-ISO-10303-21;",
         "model.ifc",
@@ -74,9 +77,11 @@ def complete_package(*, external_status: str = "REACHABLE"):
         dataset_uri="https://example.org/datasets/M-001",
         license_uri="https://creativecommons.org/licenses/by/4.0/",
         provenance={
+            "original_source": "Laboratory source record M-001",
             "creator": "Researcher",
             "institution": "Acoustic Laboratory",
             "generating_activity": "Laboratory measurement and research-object assembly",
+            "responsible_agent": "Researcher",
         },
         measurement_context={
             "measurement_type": "Airborne sound insulation (Rw)",
@@ -84,15 +89,20 @@ def complete_package(*, external_status: str = "REACHABLE"):
             "measurement_version": "measurement-v1",
             "measurement_method": "ISO 10140 laboratory method",
             "instrument": "Two-channel acoustic analyzer",
+            "measurement_date": "2026-01-15",
             "measured_quantity": "weighted sound reduction index",
             "unit": "dB",
         },
-        quality_information={"uncertainty": "±1 dB", "quality_notes": "Calibration checked before test."},
+        quality_information={
+            "uncertainty": "±1 dB",
+            "quality_notes": "Calibration checked before test.",
+            "limitations": "Prototype fixture; acoustic suitability for a different assembly is not assessed.",
+        },
         research_context={
             "intended_reuse": "Component-level comparison and reproducible method evaluation.",
             "citation": "Researcher (2026), Acoustic component research object M-001.",
         },
-        access_context={"access_rights": "open", "external_uri_status": external_status},
+        access_context=access_context,
         relationships=[relationship.to_dict()],
         metadata={
             "title": "Measured airborne sound insulation of test wall",
@@ -157,7 +167,6 @@ def test_ro_crate_turtle_manifest_and_zip_are_consistent():
         assert manifest["package_id"] == package.package_id
         assert manifest["research_object"]["profile"] == package.research_object_profile
         Graph().parse(data=archive.read("metadata.ttl").decode("utf-8"), format="turtle")
-        # rdflib's JSON-LD parser verifies that the self-contained context is usable offline.
         Graph().parse(data=archive.read("ro-crate-metadata.json").decode("utf-8"), format="json-ld")
 
 
