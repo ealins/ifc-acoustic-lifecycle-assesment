@@ -9,6 +9,7 @@ from rdflib.namespace import PROV, XSD
 
 from .export import finalize_package
 from .models import FairAcousticPackage, utc_now
+from .triggers import capture_reassessment_triggers
 
 MAP = Namespace("https://example.org/hft-acoustic/mapping/vocab/")
 
@@ -140,19 +141,41 @@ def _engine_inputs(package: FairAcousticPackage) -> tuple[dict, dict, dict, dict
         "record_id": record_id,
         "record_uri": package.dataset_uri or "",
         "mapping_series_uri": ifc["mapping_series_uri"],
-        "assignment_method": "explicit FAIR package composition",
+        "assignment_method": "explicit acoustic research-object relationship",
     }
     return ifc, rdf, settings, assignment
+
+
+def _capture_profile_trigger_evidence(package: FairAcousticPackage) -> list[dict]:
+    """Capture profile-level reassessment triggers before the preserved engine runs.
+
+    Trigger records are evidence for reassessment. They do not override the lifecycle
+    engine's semantic decision; the engine remains authoritative for status.
+    """
+    triggers = capture_reassessment_triggers(package)
+    payload = [item.to_dict() for item in triggers]
+    if payload and package.relationships:
+        relationship = package.relationships[0]
+        history = list(relationship.get("trigger_history") or [])
+        history.extend(payload)
+        relationship["trigger_history"] = history
+        relationship["last_triggered_at"] = payload[-1]["detected_at"]
+    return payload
 
 
 class FairStewardshipService:
     """Adapter that keeps the existing lifecycle engines authoritative for stewardship decisions."""
 
     def assess(self, package: FairAcousticPackage) -> StewardshipOutcome:
+        trigger_evidence = _capture_profile_trigger_evidence(package)
         profile = str(package.measurement_context.get("stewardship_profile", "GENERIC_ACOUSTIC_MEASUREMENT"))
-        if profile == "AIRBORNE_SOUND_INSULATION_RW":
-            return self._assess_rw(package)
-        return self._assess_generic(package)
+        outcome = self._assess_rw(package) if profile == "AIRBORNE_SOUND_INSULATION_RW" else self._assess_generic(package)
+        if trigger_evidence:
+            outcome.result["research_object_reassessment_triggers"] = trigger_evidence
+            if package.stewardship_history:
+                package.stewardship_history[-1]["research_object_reassessment_triggers"] = trigger_evidence
+            finalize_package(package)
+        return outcome
 
     def _assess_rw(self, package: FairAcousticPackage) -> StewardshipOutcome:
         from engine import build_rdf_turtle, evaluate_lifecycle
@@ -206,7 +229,7 @@ class FairStewardshipService:
             assembly=package.measurement_context.get("assembly", ""),
             construction_family=package.measurement_context.get("construction_family", ""),
             total_thickness_m=package.measurement_context.get("total_thickness_m"),
-            record_version=package.version,
+            record_version=package.measurement_context.get("measurement_version") or package.version,
             available=bool(package.assets.get(package.measurement_reference)),
         )
         previous_status = package.stewardship_history[-1].get("engine_status") if package.stewardship_history else None
