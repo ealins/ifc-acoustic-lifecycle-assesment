@@ -4,7 +4,7 @@ from dataclasses import asdict, dataclass
 import hashlib
 import json
 from pathlib import PurePosixPath
-from typing import Any
+from typing import Any, Iterable
 from urllib.parse import urlparse
 
 from rdflib import Graph
@@ -48,11 +48,13 @@ def validate_serializations(package: FairAcousticPackage) -> list[ValidationIssu
     except Exception as exc:
         issues.append(ValidationIssue("TURTLE_INVALID", "ERROR", f"Domain RDF/Turtle cannot be parsed: {exc}", package.metadata_reference))
     try:
-        crate = json.loads(package.assets.get("ro-crate-metadata.json", b"").decode("utf-8"))
+        crate_text = package.assets.get("ro-crate-metadata.json", b"").decode("utf-8")
+        crate = json.loads(crate_text)
         if not isinstance(crate, dict) or "@context" not in crate or "@graph" not in crate:
             raise ValueError("JSON-LD object must contain @context and @graph")
+        Graph().parse(data=crate_text, format="json-ld")
     except Exception as exc:
-        issues.append(ValidationIssue("JSONLD_INVALID", "ERROR", f"ro-crate-metadata.json is not valid structural JSON-LD: {exc}", "ro-crate-metadata.json"))
+        issues.append(ValidationIssue("JSONLD_INVALID", "ERROR", f"ro-crate-metadata.json cannot be parsed as JSON-LD: {exc}", "ro-crate-metadata.json"))
     try:
         profile = json.loads(package.assets.get("profiles/acoustic-metadata-profile.json", b"").decode("utf-8"))
         if profile.get("version") != PROFILE_VERSION or not isinstance(profile.get("fields"), list):
@@ -97,6 +99,16 @@ def _validate_report_identity(package: FairAcousticPackage, path: str, key: str 
     return []
 
 
+def validate_package_id_uniqueness(packages: Iterable[FairAcousticPackage]) -> list[ValidationIssue]:
+    seen: set[str] = set()
+    issues: list[ValidationIssue] = []
+    for package in packages:
+        if package.package_id in seen:
+            issues.append(ValidationIssue("PACKAGE_ID_DUPLICATE", "ERROR", f"Package identifier '{package.package_id}' occurs more than once in the prototype library.", package.package_id, "package_id"))
+        seen.add(package.package_id)
+    return issues
+
+
 def validate_research_object(package: FairAcousticPackage) -> dict[str, Any]:
     issues: list[ValidationIssue] = []
 
@@ -110,7 +122,6 @@ def validate_research_object(package: FairAcousticPackage) -> dict[str, Any]:
         add("PACKAGE_TITLE_MISSING", "ERROR", "Research object title is missing; the UI fallback label is not treated as supplied descriptive metadata.", package.package_id, "title")
     if not package.ifc_global_id:
         add("IFC_GLOBALID_MISSING", "ERROR", "No selected IFC GlobalId is recorded for the component relationship.", package.package_id, "ifc_global_id")
-
     if package.geometry_reference not in package.assets:
         add("PRIMARY_IFC_ASSET_MISSING", "ERROR", f"Required IFC source asset '{package.geometry_reference}' is missing from the package.", package.package_id, "geometry_reference")
 
@@ -141,13 +152,16 @@ def validate_research_object(package: FairAcousticPackage) -> dict[str, Any]:
         path = record.get("path")
         if path and record.get("packaged", True) and path not in package.assets:
             add("DECLARED_ASSET_MISSING", "ERROR", f"Declared packaged asset '{path}' is absent.", asset_id or package.package_id, "path")
-        if not record.get("packaged", True) and record.get("checksum"):
-            add("EXTERNAL_CHECKSUM_UNSUPPORTED", "ERROR", f"External asset '{asset_id}' has a checksum even though its bytes were not retrieved by this package workflow.", asset_id, "checksum")
+        if not record.get("packaged", True):
+            if record.get("checksum"):
+                add("EXTERNAL_CHECKSUM_UNSUPPORTED", "ERROR", f"External asset '{asset_id}' has a checksum even though its bytes were not retrieved by this package workflow.", asset_id, "checksum")
+            if record.get("size_bytes") is not None:
+                add("EXTERNAL_SIZE_UNVERIFIED", "ERROR", f"External asset '{asset_id}' has a byte size even though source bytes were not retrieved.", asset_id, "size_bytes")
 
     measurement_id = str(package.metadata.get("measurement_identifier") or "")
     if not measurement_id:
         add("MEASUREMENT_ID_MISSING", "ERROR", "Primary acoustic dataset has no explicit dataset identifier.", package.measurement_reference, "measurement_identifier")
-    origin = str((package.metadata.get("measurement_inspection") or {}).get("origin_classification") or package.measurement_context.get("origin_classification") or MeasurementOrigin.UNKNOWN_ORIGIN.value)
+    origin = str(package.measurement_context.get("origin_classification") or (package.metadata.get("measurement_inspection") or {}).get("origin_classification") or MeasurementOrigin.UNKNOWN_ORIGIN.value)
     if origin in {MeasurementOrigin.UNKNOWN_ORIGIN.value, "unknown"}:
         add("MEASUREMENT_ORIGIN_UNKNOWN", "WARNING", "Acoustic dataset origin is unknown; origin was not inferred from file structure.", measurement_id or package.measurement_reference, "origin_classification")
 
@@ -202,8 +216,8 @@ def validate_research_object(package: FairAcousticPackage) -> dict[str, Any]:
 
     if not package.license:
         add("LICENCE_MISSING", "WARNING", f"Reuse metadata are incomplete because no licence or reuse-rights statement was provided for acoustic dataset {measurement_id or package.measurement_reference}.", package.package_id, "license")
-    elif ":" in str(package.license) and not valid_uri(str(package.license)):
-        add("LICENCE_URI_INVALID", "ERROR", f"Licence value '{package.license}' looks URI-like but is not a supported valid URI.", package.package_id, "license")
+    elif str(package.license).startswith(("http://", "https://", "urn:", "doi:")) and not valid_uri(str(package.license)):
+        add("LICENCE_URI_INVALID", "ERROR", f"Licence URI '{package.license}' is syntactically invalid.", package.package_id, "license")
     if not package.provenance:
         add("PROVENANCE_MISSING", "WARNING", f"Provenance is missing for {package.package_id}; no creator, source, or generating activity is inferred.", package.package_id, "provenance")
 
@@ -220,7 +234,6 @@ def validate_research_object(package: FairAcousticPackage) -> dict[str, Any]:
         elif access_status == "UNREACHABLE":
             add("EXTERNAL_RESOURCE_UNREACHABLE", "WARNING", f"External acoustic dataset URI '{package.dataset_uri}' is recorded as unreachable; metadata can remain available while data accessibility is impaired.", measurement_id or package.measurement_reference, "dataset_uri")
 
-    # Promote executable profile failures into precise package validation findings.
     completeness = package.metadata_completeness_assessment or {}
     for field_result in completeness.get("fields", []):
         if not field_result.get("applicable"):
@@ -237,13 +250,10 @@ def validate_research_object(package: FairAcousticPackage) -> dict[str, Any]:
             add("METADATA_REVIEW_INCOMPLETE", "WARNING", f"Metadata field '{field_result.get('label')}' requires verification or manual review: {field_result.get('note') or status}.", package.package_id, field_result.get("field_name"))
 
     issues.extend(validate_serializations(package))
-    for path in (
-        "reports/metadata-completeness-assessment.json",
-        "reports/fair-support-assessment.json",
-        "reports/relationship-lifecycle-assessment.json",
-        "evidence/relationship-evidence.json",
-    ):
-        issues.extend(_validate_report_identity(package, path))
+    issues.extend(_validate_report_identity(package, "reports/metadata-completeness-assessment.json"))
+    issues.extend(_validate_report_identity(package, "reports/fair-support-assessment.json", key="assessed_package_id"))
+    issues.extend(_validate_report_identity(package, "reports/relationship-lifecycle-assessment.json"))
+    issues.extend(_validate_report_identity(package, "evidence/relationship-evidence.json"))
 
     summary = {
         "errors": sum(item.severity == "ERROR" for item in issues),
