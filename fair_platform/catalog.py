@@ -37,6 +37,8 @@ class MetadataCatalog:
                 package.title,
                 str(package.metadata),
                 str(package.measurement_context),
+                str(package.research_context),
+                str(package.simulation_context),
                 str(package.provenance),
             ]).lower()
             if needle and needle not in haystack:
