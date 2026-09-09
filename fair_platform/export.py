@@ -8,6 +8,7 @@ from .assessment import apply_assessment
 from .manifest import manifest_json
 from .metadata import metadata_turtle
 from .models import FairAcousticPackage
+from .shacl import validate_package_shacl
 
 
 def _checksum(data: bytes) -> str:
@@ -21,11 +22,17 @@ def finalize_package(package: FairAcousticPackage) -> None:
         if path not in {package.metadata_reference, "manifest.json"}
     }
 
+    # Generate metadata once so FAIR assessment can test real RDF bytes.
     package.assets[package.metadata_reference] = metadata_turtle(package).encode("utf-8")
     package.checksums[package.metadata_reference] = _checksum(package.assets[package.metadata_reference])
 
     apply_assessment(package)
 
+    # Rebuild RDF with current FAIR state, execute the SHACL profile, and retain the report.
+    package.assets[package.metadata_reference] = metadata_turtle(package).encode("utf-8")
+    package.metadata["shacl_validation"] = validate_package_shacl(package)
+
+    # Final metadata includes the SHACL conformance summary itself.
     package.assets[package.metadata_reference] = metadata_turtle(package).encode("utf-8")
     package.checksums[package.metadata_reference] = _checksum(package.assets[package.metadata_reference])
     package.assets["manifest.json"] = manifest_json(package).encode("utf-8")
