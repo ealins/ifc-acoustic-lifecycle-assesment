@@ -20,6 +20,45 @@ def _uri(value: str | None, fallback: str) -> URIRef:
     return URIRef(text if text.startswith(("http://", "https://", "urn:")) else fallback)
 
 
+def _add_context(graph: Graph, subject: URIRef, context: dict) -> None:
+    for key, value in context.items():
+        if value in (None, "", []):
+            continue
+        if isinstance(value, (list, tuple, set)):
+            for item in value:
+                if item not in (None, ""):
+                    graph.add((subject, FAIRAC[_term(key)], Literal(str(item))))
+        elif isinstance(value, dict):
+            for nested_key, nested_value in value.items():
+                if nested_value not in (None, "", []):
+                    graph.add((subject, FAIRAC[_term(f"{key}_{nested_key}")], Literal(str(nested_value))))
+        else:
+            graph.add((subject, FAIRAC[_term(key)], Literal(str(value))))
+
+
+def _add_supplementary_resources(
+    graph: Graph,
+    package_uri: URIRef,
+    parent_uri: URIRef,
+    records: list[dict] | None,
+    role: str,
+) -> None:
+    for index, record in enumerate(records or [], start=1):
+        path = str(record.get("path") or f"{role}-{index}")
+        node = URIRef(f"{package_uri}#{role}-resource-{index}")
+        graph.add((node, RDF.type, DCAT.Distribution))
+        graph.add((node, RDF.type, FAIRAC.ResearchResource))
+        graph.add((node, DCTERMS.identifier, Literal(path)))
+        graph.add((node, FAIRAC.filePath, Literal(path)))
+        graph.add((node, FAIRAC.resourceRole, Literal(role)))
+        if record.get("source_filename"):
+            graph.add((node, DCTERMS.title, Literal(str(record["source_filename"]))))
+        if record.get("media_type"):
+            graph.add((node, DCTERMS.format, Literal(str(record["media_type"]))))
+        graph.add((package_uri, FAIRAC.hasResearchResource, node))
+        graph.add((parent_uri, FAIRAC.hasResource, node))
+
+
 def build_metadata_graph(package: FairAcousticPackage) -> Graph:
     graph = Graph()
     graph.bind("fairac", FAIRAC)
@@ -32,6 +71,8 @@ def build_metadata_graph(package: FairAcousticPackage) -> Graph:
     geometry_uri = URIRef(f"{package_uri}#geometry")
     measurement_uri = _uri(package.dataset_uri, f"{package_uri}#measurement")
     metadata_uri = URIRef(f"{package_uri}#metadata")
+    research_uri = URIRef(f"{package_uri}#research-study")
+    simulation_uri = URIRef(f"{package_uri}#simulation-study")
 
     graph.add((package_uri, RDF.type, FAIRAC.FairAcousticPackage))
     graph.add((package_uri, RDF.type, DCAT.Dataset))
@@ -48,6 +89,35 @@ def build_metadata_graph(package: FairAcousticPackage) -> Graph:
     graph.add((package_uri, FAIRAC.accessible, Literal(package.accessible, datatype=XSD.boolean)))
     graph.add((package_uri, FAIRAC.interoperable, Literal(package.interoperable, datatype=XSD.boolean)))
     graph.add((package_uri, FAIRAC.reusable, Literal(package.reusable, datatype=XSD.boolean)))
+
+    if package.research_context:
+        graph.add((package_uri, FAIRAC.hasResearchStudy, research_uri))
+        graph.add((research_uri, RDF.type, FAIRAC.AcousticResearchStudy))
+        graph.add((research_uri, PROV.wasDerivedFrom, geometry_uri))
+        graph.add((research_uri, PROV.wasDerivedFrom, measurement_uri))
+        _add_context(graph, research_uri, package.research_context)
+
+    if package.simulation_context:
+        graph.add((package_uri, FAIRAC.hasSimulationStudy, simulation_uri))
+        graph.add((simulation_uri, RDF.type, FAIRAC.AcousticSimulationStudy))
+        graph.add((simulation_uri, PROV.used, geometry_uri))
+        graph.add((simulation_uri, PROV.wasAssociatedWith, research_uri))
+        _add_context(graph, simulation_uri, package.simulation_context)
+
+    _add_supplementary_resources(
+        graph,
+        package_uri,
+        simulation_uri,
+        package.metadata.get("simulation_resources"),
+        "simulation",
+    )
+    _add_supplementary_resources(
+        graph,
+        package_uri,
+        research_uri,
+        package.metadata.get("research_resources"),
+        "research",
+    )
 
     shacl = package.metadata.get("shacl_validation") or {}
     if shacl:
@@ -104,12 +174,8 @@ def build_metadata_graph(package: FairAcousticPackage) -> Graph:
         for signal in inspection.get("semantic_signals", []) or []:
             graph.add((measurement_uri, FAIRAC.detectedSignal, Literal(str(signal))))
 
-    for key, value in package.measurement_context.items():
-        if value not in (None, "", []):
-            graph.add((measurement_uri, FAIRAC[_term(key)], Literal(str(value))))
-    for key, value in package.quality_information.items():
-        if value not in (None, "", []):
-            graph.add((measurement_uri, FAIRAC[_term(key)], Literal(str(value))))
+    _add_context(graph, measurement_uri, package.measurement_context)
+    _add_context(graph, measurement_uri, package.quality_information)
 
     graph.add((metadata_uri, RDF.type, FAIRAC.MetadataRecord))
     graph.add((metadata_uri, DCTERMS.format, Literal("text/turtle")))
@@ -122,6 +188,10 @@ def build_metadata_graph(package: FairAcousticPackage) -> Graph:
         graph.add((agent_uri, DCTERMS.title, Literal(str(agent_name))))
         graph.add((package_uri, PROV.wasAttributedTo, agent_uri))
         graph.add((measurement_uri, PROV.wasAttributedTo, agent_uri))
+        if package.research_context:
+            graph.add((research_uri, PROV.wasAssociatedWith, agent_uri))
+        if package.simulation_context:
+            graph.add((simulation_uri, PROV.wasAssociatedWith, agent_uri))
 
     for path, checksum in package.checksums.items():
         checksum_node = URIRef(f"{package_uri}#checksum-{_term(path)}")
