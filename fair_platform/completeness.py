@@ -8,7 +8,7 @@ from uuid import uuid4
 
 from .metadata_profile import PROFILE_FIELDS, PROFILE_ID, PROFILE_VERSION, MetadataFieldDefinition, RequirementLevel
 from .models import FairAcousticPackage, utc_now
-from .research_object import MeasurementOrigin, RelationshipType
+from .research_object import MeasurementOrigin, RelationshipType, relationship_type_allowed_for_origin
 
 
 class MetadataFieldStatus(str, Enum):
@@ -60,8 +60,8 @@ class MetadataCompletenessAssessment:
     limitations: list[str] = field(default_factory=lambda: [
         "Metadata completeness is not FAIR certification.",
         "Metadata completeness is not evidence that acoustic values are scientifically valid or suitable for a new design case.",
+        "Recommended-field coverage is reported separately and does not by itself prevent COMPLETE_FOR_PROTOTYPE.",
         "NOT_VERIFIED means the metadata value or external condition was recorded but not independently verified by this prototype.",
-        "A local package identifier can satisfy prototype identity while the FAIR-support evaluator separately distinguishes it from a registered/resolvable persistent identifier.",
     ])
 
     @property
@@ -80,20 +80,15 @@ class MetadataCompletenessAssessment:
             item for item in self.active_required
             if item.status in {MetadataFieldStatus.MISSING, MetadataFieldStatus.INVALID}
         ]
-        definitions = {definition.field_name: definition for definition in PROFILE_FIELDS}
+        definitions = {item.field_name: item for item in PROFILE_FIELDS}
         if any(definitions[item.field_name].interpretation_critical for item in required_failures if item.field_name in definitions):
             return MetadataCompletenessStatus.INSUFFICIENT_FOR_INTERPRETATION
         if any(definitions[item.field_name].reuse_critical for item in required_failures if item.field_name in definitions):
             return MetadataCompletenessStatus.INSUFFICIENT_FOR_REUSE
         if required_failures:
             return MetadataCompletenessStatus.PARTIALLY_COMPLETE
-        if any(item.status == MetadataFieldStatus.MANUAL_REVIEW for item in self.active_required):
+        if any(item.status in {MetadataFieldStatus.NOT_VERIFIED, MetadataFieldStatus.MANUAL_REVIEW} for item in self.active_required):
             return MetadataCompletenessStatus.VALIDATION_INCOMPLETE
-        if any(item.status == MetadataFieldStatus.NOT_VERIFIED for item in self.active_required):
-            return MetadataCompletenessStatus.VALIDATION_INCOMPLETE
-        recommended = [item for item in self.fields if item.applicable and item.requirement_level == RequirementLevel.RECOMMENDED.value]
-        if any(item.status in {MetadataFieldStatus.MISSING, MetadataFieldStatus.INVALID, MetadataFieldStatus.NOT_VERIFIED} for item in recommended):
-            return MetadataCompletenessStatus.PARTIALLY_COMPLETE
         return MetadataCompletenessStatus.COMPLETE_FOR_PROTOTYPE
 
     def summary(self) -> dict[str, int]:
@@ -143,7 +138,7 @@ def _uri(value: Any) -> bool:
     return parsed.scheme in {"http", "https", "urn", "doi"}
 
 
-def _asset_record_for_measurement(package: FairAcousticPackage) -> dict[str, Any]:
+def _measurement_record(package: FairAcousticPackage) -> dict[str, Any]:
     return next(
         (
             item for item in package.asset_records
@@ -154,14 +149,22 @@ def _asset_record_for_measurement(package: FairAcousticPackage) -> dict[str, Any
     )
 
 
+def _measurement_packaged(package: FairAcousticPackage) -> bool:
+    record = _measurement_record(package)
+    return bool(record.get("packaged", package.measurement_reference in package.assets))
+
+
 def _resolve(package: FairAcousticPackage, path: str) -> Any:
-    # Prototype identity and PID persistence are deliberately separate concerns.
     if path == "identifier":
+        # A local package ID satisfies prototype package identity. A repository/PID
+        # remains a separate FAIR persistence question and is never fabricated.
         return package.identifier or package.package_id
+    if path == "metadata.source_ifc_sha256":
+        return package.metadata.get("source_ifc_sha256") or package.checksums.get(package.geometry_reference)
     if path == "checksums.__measurement__":
         return package.checksums.get(package.measurement_reference)
     if path == "asset_records.__measurement__.size_bytes":
-        return _asset_record_for_measurement(package).get("size_bytes")
+        return _measurement_record(package).get("size_bytes")
     current: Any = package
     for token in path.split("."):
         if current is None:
@@ -203,7 +206,7 @@ def _condition_applies(code: str, package: FairAcousticPackage) -> bool:
     if code == "manufacturer_origin":
         return origin == MeasurementOrigin.MANUFACTURER_VALUE.value
     if code == "external_dataset":
-        return bool(package.dataset_uri) or not bool(package.assets.get(package.measurement_reference))
+        return not _measurement_packaged(package)
     if code == "numeric_quantity":
         return _present(package.measurement_context.get("measured_quantity"))
     if code == "frequency_dependent":
@@ -225,9 +228,15 @@ def _condition_applies(code: str, package: FairAcousticPackage) -> bool:
     return True
 
 
+def _field_applies(field_def: MetadataFieldDefinition, package: FairAcousticPackage) -> bool:
+    if field_def.field_name in {"dataset_package_path", "dataset_checksum", "dataset_byte_size"}:
+        return _measurement_packaged(package)
+    return _condition_applies(field_def.condition_code, package)
+
+
 def _status_for(field_def: MetadataFieldDefinition, value: Any, package: FairAcousticPackage) -> tuple[MetadataFieldStatus, str]:
-    if not _condition_applies(field_def.condition_code, package):
-        return MetadataFieldStatus.NOT_APPLICABLE, "Conditional requirement is not active for the declared dataset/access context."
+    if not _field_applies(field_def, package):
+        return MetadataFieldStatus.NOT_APPLICABLE, "Field is not applicable for the declared dataset/access context."
     if not _present(value):
         return MetadataFieldStatus.MISSING, "No value is recorded."
 
@@ -243,12 +252,9 @@ def _status_for(field_def: MetadataFieldDefinition, value: Any, package: FairAco
         allowed = {item.value for item in RelationshipType}
         if str(value) not in allowed or str(value) == RelationshipType.UNKNOWN.value:
             return MetadataFieldStatus.INVALID, "Relationship type is missing/unknown or outside the controlled vocabulary."
-        origin = _origin(package)
-        if str(value) == RelationshipType.MEASURED_ON.value and origin not in {
-            MeasurementOrigin.RAW_MEASUREMENT.value,
-            MeasurementOrigin.PROCESSED_MEASUREMENT.value,
-        }:
-            return MetadataFieldStatus.INVALID, "MEASURED_ON is reserved for measurement-origin datasets; use a weaker/appropriate relationship type for catalog, reference, manufacturer, prediction, or simulation data."
+        compatible, reason = relationship_type_allowed_for_origin(_origin(package), str(value))
+        if not compatible:
+            return MetadataFieldStatus.INVALID, reason
     if field_def.field_name == "access_status":
         status = str(value).upper()
         if status in {"NOT_TESTED", "UNKNOWN", "NOT_VERIFIED"}:
@@ -263,7 +269,7 @@ def _status_for(field_def: MetadataFieldDefinition, value: Any, package: FairAco
 def assess_metadata_completeness(package: FairAcousticPackage) -> MetadataCompletenessAssessment:
     field_results: list[MetadataFieldAssessment] = []
     for definition in PROFILE_FIELDS:
-        applicable = _condition_applies(definition.condition_code, package)
+        applicable = _field_applies(definition, package)
         value = _resolve(package, definition.path)
         status, note = _status_for(definition, value, package)
         recommendation = ""
