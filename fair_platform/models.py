@@ -105,6 +105,8 @@ class FairAcousticPackage:
     license: Optional[str] = None
     measurement_context: dict[str, Any] = field(default_factory=dict)
     quality_information: dict[str, Any] = field(default_factory=dict)
+    research_context: dict[str, Any] = field(default_factory=dict)
+    simulation_context: dict[str, Any] = field(default_factory=dict)
     ifc_global_id: Optional[str] = None
     dataset_uri: Optional[str] = None
     mapping_series_uri: Optional[str] = None
