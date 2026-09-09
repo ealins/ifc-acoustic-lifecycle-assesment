@@ -25,6 +25,13 @@ def _media_type(package: FairAcousticPackage, path: str) -> str:
 
 
 def build_manifest(package: FairAcousticPackage) -> dict[str, Any]:
+    """Build the derived application compatibility manifest.
+
+    ``manifest.json`` deliberately keeps the historical v2 schema identifier and
+    legacy resource fields so older integrations continue to work. New research-
+    object semantics are additive. The authoritative portable research-object
+    representation is ``ro-crate-metadata.json``, not this compatibility view.
+    """
     asset_index: dict[str, Any] = {}
     records = {item.get("path"): item for item in package.asset_records if item.get("path")}
     for path, payload in sorted(package.assets.items()):
@@ -50,10 +57,39 @@ def build_manifest(package: FairAcousticPackage) -> dict[str, Any]:
             "packaged": True,
         }
 
+    geometry_resource = {
+        **asset_index.get(package.geometry_reference, {}),
+        # Historical fields retained for old clients/tests.
+        "ifc_global_id": package.ifc_global_id,
+        "source_filename": package.metadata.get("source_geometry_filename"),
+        # New profile evidence remains additive.
+        "ifc_schema": package.metadata.get("geometry_ifc_schema"),
+        "ifc_entity_type": package.metadata.get("geometry_ifc_class"),
+        "component_type": package.metadata.get("geometry_component_type") or package.metadata.get("geometry_semantic_classification"),
+        "source_model_version": package.metadata.get("model_version"),
+    }
+    measurement_resource = {
+        **asset_index.get(package.measurement_reference, {}),
+        "dataset_uri": package.dataset_uri,
+        "measurement_identifier": package.metadata.get("measurement_identifier"),
+        "source_filename": package.metadata.get("source_measurement_filename"),
+        "origin_classification": (package.metadata.get("measurement_inspection") or {}).get("origin_classification") or package.measurement_context.get("origin_classification"),
+        "inspection": package.metadata.get("measurement_inspection"),
+    }
+
     return {
-        "schema": "https://example.org/fair-acoustic/manifest/v3",
+        # Kept at v2 for backward compatibility. Research-object evolution is
+        # described separately so this derived manifest is not a competing authority.
+        "schema": "https://example.org/fair-acoustic/manifest/v2",
+        "manifest_profile": "acoustic-component-research-object-compatibility-v3",
         "object_type": package.object_type,
         "profile": package.research_object_profile,
+        "research_object": {
+            "object_type": package.object_type,
+            "profile": package.research_object_profile,
+            "portable_metadata": "ro-crate-metadata.json",
+            "domain_rdf": package.metadata_reference,
+        },
         "metadata_authority": {
             "in_memory_domain_model": "authoritative application state",
             "ro-crate-metadata.json": "principal portable research-object representation",
@@ -70,14 +106,8 @@ def build_manifest(package: FairAcousticPackage) -> dict[str, Any]:
         "license": package.license,
         "access": package.access_context,
         "resources": {
-            "geometry": asset_index.get(package.geometry_reference, {}),
-            "measurement": {
-                **asset_index.get(package.measurement_reference, {}),
-                "dataset_uri": package.dataset_uri,
-                "measurement_identifier": package.metadata.get("measurement_identifier"),
-                "origin_classification": (package.metadata.get("measurement_inspection") or {}).get("origin_classification"),
-                "inspection": package.metadata.get("measurement_inspection"),
-            },
+            "geometry": geometry_resource,
+            "measurement": measurement_resource,
             "ro_crate_metadata": asset_index.get("ro-crate-metadata.json", {}),
             "domain_rdf": asset_index.get(package.metadata_reference, {}),
         },
