@@ -1,243 +1,123 @@
 """
 Test harness for 3-tier validation using demo data.
 
-Tests the complete validation pipeline with association_lifecycle_demo.json
+Tests the complete validation pipeline with association_lifecycle_demo.json.
+The functions are valid pytest tests and can also be run as a standalone harness.
 """
 
+import json
 import sys
 from pathlib import Path
-import json
 
-# Add parent to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from association_lifecycle import WallEvidence, RecordEvidence
-from dashboard.backend.validators import TieredValidator, ValidationResult
+from association_lifecycle import RecordEvidence, WallEvidence
+from dashboard.backend.validators import TieredValidator
+
+
+def _evidence():
+    wall = WallEvidence(
+        global_id="2qL6OSUnz6ZAzEOn1HxeD2",
+        name="Wall_001",
+        construction_family="Masonry Wall",
+        total_thickness_m=0.185,
+        material_evidence=["Brick", "Mortar", "Insulation"],
+        model_version="bau1-2026-02-18",
+    )
+    record = RecordEvidence(
+        uri="https://example.org/hft-acoustic/record/vabdat-310",
+        identifier="vabdat-310",
+        assembly="Exterior Wall Assembly",
+        construction_family="Masonry Wall",
+        total_thickness_m=0.185,
+        record_version="prototype-v2",
+        available=True,
+    )
+    return wall, record
+
+
+def _print_checks(title, checks):
+    print("\n" + "=" * 70)
+    print(title)
+    print("=" * 70)
+    for check in checks:
+        status = "PASS" if check.passed else "FAIL"
+        print(f"  {status} - {check.name}")
+        print(f"       {check.description}")
+        if check.details:
+            print(f"       {check.details}")
 
 
 def test_tier_1_link_validation():
-    """Test Tier 1: Link Validation"""
-    print("\n" + "="*70)
-    print("TEST: Tier 1 - Link Validation")
-    print("="*70)
-    
-    wall = WallEvidence(
-        global_id="2qL6OSUnz6ZAzEOn1HxeD2",
-        name="Wall_001",
-        construction_family="Masonry Wall",
-        total_thickness_m=0.185,
-        material_evidence=["Brick", "Mortar", "Insulation"],
-        model_version="bau1-2026-02-18"
-    )
-    
-    record = RecordEvidence(
-        uri="https://example.org/hft-acoustic/record/vabdat-310",
-        identifier="vabdat-310",
-        assembly="Exterior Wall Assembly",
-        construction_family="Masonry Wall",
-        total_thickness_m=0.185,
-        record_version="prototype-v2",
-        available=True
-    )
-    
-    validator = TieredValidator()
-    checks = validator.validate_tier_1_link(wall, record)
-    
-    print(f"\nTier 1 Checks: {len(checks)} total")
-    for check in checks:
-        status = "✅ PASS" if check.passed else "❌ FAIL"
-        print(f"  {status} - {check.name}")
-        print(f"       {check.description}")
-        if check.details:
-            print(f"       {check.details}")
-    
-    passed = sum(1 for c in checks if c.passed)
-    print(f"\nResult: {passed}/{len(checks)} checks passed")
-    return passed == len(checks)
+    """Test Tier 1: Link Validation."""
+    wall, record = _evidence()
+    checks = TieredValidator().validate_tier_1_link(wall, record)
+    _print_checks("TEST: Tier 1 - Link Validation", checks)
+    assert checks, "Tier 1 returned no validation checks"
+    assert all(check.passed for check in checks)
 
 
 def test_tier_2_mapping_validation():
-    """Test Tier 2: Mapping Validation"""
-    print("\n" + "="*70)
-    print("TEST: Tier 2 - Mapping Validation")
-    print("="*70)
-    
-    wall = WallEvidence(
-        global_id="2qL6OSUnz6ZAzEOn1HxeD2",
-        name="Wall_001",
-        construction_family="Masonry Wall",
-        total_thickness_m=0.185,
-        material_evidence=["Brick", "Mortar", "Insulation"],
-        model_version="bau1-2026-02-18"
-    )
-    
-    record = RecordEvidence(
-        uri="https://example.org/hft-acoustic/record/vabdat-310",
-        identifier="vabdat-310",
-        assembly="Exterior Wall Assembly",
-        construction_family="Masonry Wall",
-        total_thickness_m=0.185,
-        record_version="prototype-v2",
-        available=True
-    )
-    
-    validator = TieredValidator()
-    checks = validator.validate_tier_2_mapping(wall, record)
-    
-    print(f"\nTier 2 Checks: {len(checks)} total")
-    for check in checks:
-        status = "✅ PASS" if check.passed else "❌ FAIL"
-        print(f"  {status} - {check.name}")
-        print(f"       {check.description}")
-        if check.details:
-            print(f"       {check.details}")
-    
-    passed = sum(1 for c in checks if c.passed)
-    print(f"\nResult: {passed}/{len(checks)} checks passed")
-    return passed == len(checks)
+    """Test Tier 2: Mapping Validation."""
+    wall, record = _evidence()
+    checks = TieredValidator().validate_tier_2_mapping(wall, record)
+    _print_checks("TEST: Tier 2 - Mapping Validation", checks)
+    assert checks, "Tier 2 returned no validation checks"
+    assert all(check.passed for check in checks)
 
 
 def test_tier_3_lifecycle_validation():
-    """Test Tier 3: Lifecycle Validation"""
-    print("\n" + "="*70)
-    print("TEST: Tier 3 - Lifecycle Validation")
-    print("="*70)
-    
-    wall = WallEvidence(
-        global_id="2qL6OSUnz6ZAzEOn1HxeD2",
-        name="Wall_001",
-        construction_family="Masonry Wall",
-        total_thickness_m=0.185,
-        material_evidence=["Brick", "Mortar", "Insulation"],
-        model_version="bau1-2026-02-18"
-    )
-    
-    record = RecordEvidence(
-        uri="https://example.org/hft-acoustic/record/vabdat-310",
-        identifier="vabdat-310",
-        assembly="Exterior Wall Assembly",
-        construction_family="Masonry Wall",
-        total_thickness_m=0.185,
-        record_version="prototype-v2",
-        available=True
-    )
-    
-    validator = TieredValidator(thickness_tolerance_m=0.02)
-    checks, status, requires_review, rationale = validator.validate_tier_3_lifecycle(
-        wall, record, previous_status=None
-    )
-    
-    print(f"\nTier 3 Checks: {len(checks)} total")
-    for check in checks:
-        status_icon = "✅ PASS" if check.passed else "❌ FAIL"
-        print(f"  {status_icon} - {check.name}")
-        print(f"       {check.description}")
-        if check.details:
-            print(f"       {check.details}")
-    
-    print(f"\nOverall Status: {status.value}")
+    """Test Tier 3: Lifecycle Validation."""
+    wall, record = _evidence()
+    checks, status, requires_review, rationale = TieredValidator(
+        thickness_tolerance_m=0.02
+    ).validate_tier_3_lifecycle(wall, record, previous_status=None)
+    _print_checks("TEST: Tier 3 - Lifecycle Validation", checks)
+    print(f"Overall Status: {status.value}")
     print(f"Requires Review: {requires_review}")
     print(f"Rationale: {rationale}")
-    
-    passed = sum(1 for c in checks if c.passed)
-    return passed == len(checks)
+    assert checks, "Tier 3 returned no validation checks"
+    assert all(check.passed for check in checks)
 
 
 def test_full_validation():
-    """Test complete 3-tier validation"""
-    print("\n" + "="*70)
+    """Test complete 3-tier validation."""
+    wall, record = _evidence()
+    result = TieredValidator(thickness_tolerance_m=0.02).validate_all(
+        wall, record, previous_status=None
+    )
+    print("\n" + "=" * 70)
     print("TEST: Full 3-Tier Validation Pipeline")
-    print("="*70)
-    
-    wall = WallEvidence(
-        global_id="2qL6OSUnz6ZAzEOn1HxeD2",
-        name="Wall_001",
-        construction_family="Masonry Wall",
-        total_thickness_m=0.185,
-        material_evidence=["Brick", "Mortar", "Insulation"],
-        model_version="bau1-2026-02-18"
-    )
-    
-    record = RecordEvidence(
-        uri="https://example.org/hft-acoustic/record/vabdat-310",
-        identifier="vabdat-310",
-        assembly="Exterior Wall Assembly",
-        construction_family="Masonry Wall",
-        total_thickness_m=0.185,
-        record_version="prototype-v2",
-        available=True
-    )
-    
-    validator = TieredValidator(thickness_tolerance_m=0.02)
-    result = validator.validate_all(wall, record, previous_status=None)
-    
-    print(f"\nValidation Complete!")
+    print("=" * 70)
     print(f"Total Checks: {len(result.all_checks)}")
-    print(f"  Tier 1 (Link): {len(result.tier_1_link)} checks")
-    print(f"  Tier 2 (Mapping): {len(result.tier_2_mapping)} checks")
-    print(f"  Tier 3 (Lifecycle): {len(result.tier_3_lifecycle)} checks")
-    
-    print(f"\nResults:")
-    print(f"  Passed: {result.passed_count}")
-    print(f"  Failed: {result.failed_count}")
-    print(f"  Pass Rate: {(result.passed_count/len(result.all_checks)*100):.1f}%")
-    
-    print(f"\nOverall Status: {result.overall_status.value}")
+    print(f"Passed: {result.passed_count}")
+    print(f"Failed: {result.failed_count}")
+    print(f"Overall Status: {result.overall_status.value}")
     print(f"Requires Review: {result.requires_review}")
     print(f"Rationale: {result.rationale}")
-    print(f"Timestamp: {result.assessment_timestamp}")
-    
-    return True
+    assert result.all_checks, "Full validation returned no checks"
+    assert result.failed_count == 0
+    assert result.passed_count == len(result.all_checks)
 
 
 def test_json_export():
-    """Test JSON export functionality"""
-    print("\n" + "="*70)
-    print("TEST: JSON Export")
-    print("="*70)
-    
-    wall = WallEvidence(
-        global_id="2qL6OSUnz6ZAzEOn1HxeD2",
-        name="Wall_001",
-        construction_family="Masonry Wall",
-        total_thickness_m=0.185,
-        material_evidence=["Brick", "Mortar", "Insulation"],
-        model_version="bau1-2026-02-18"
-    )
-    
-    record = RecordEvidence(
-        uri="https://example.org/hft-acoustic/record/vabdat-310",
-        identifier="vabdat-310",
-        assembly="Exterior Wall Assembly",
-        construction_family="Masonry Wall",
-        total_thickness_m=0.185,
-        record_version="prototype-v2",
-        available=True
-    )
-    
-    validator = TieredValidator()
-    result = validator.validate_all(wall, record, previous_status=None)
-    
+    """Test JSON export functionality."""
+    wall, record = _evidence()
+    result = TieredValidator().validate_all(wall, record, previous_status=None)
     result_dict = result.to_dict()
     json_str = json.dumps(result_dict, indent=2)
-    
-    print(f"\nJSON Export Size: {len(json_str)} bytes")
-    print(f"\nJSON Structure (first 500 chars):")
-    print(json_str[:500] + "...")
-    
-    # Validate JSON can be parsed
     parsed = json.loads(json_str)
-    print(f"\n✅ JSON is valid and contains {len(parsed)} top-level keys")
-    
-    return True
+    print(f"JSON Export Size: {len(json_str)} bytes")
+    assert isinstance(parsed, dict)
+    assert parsed
+    assert parsed.get("overall_status") == result.overall_status.value
 
 
 def main():
-    """Run all tests"""
-    print("\n" + "#"*70)
+    """Run all tests as a standalone demonstration harness."""
+    print("\n" + "#" * 70)
     print("# IFC-VaBDat 3-Tier Validation Test Harness")
-    print("#"*70)
-    
+    print("#" * 70)
     tests = [
         ("Tier 1: Link Validation", test_tier_1_link_validation),
         ("Tier 2: Mapping Validation", test_tier_2_mapping_validation),
@@ -245,39 +125,28 @@ def main():
         ("Full Validation Pipeline", test_full_validation),
         ("JSON Export", test_json_export),
     ]
-    
     results = {}
     for test_name, test_func in tests:
         try:
-            results[test_name] = test_func()
-        except Exception as e:
-            print(f"\n❌ ERROR: {e}")
+            test_func()
+            results[test_name] = True
+        except Exception as exc:
+            print(f"\nERROR: {exc}")
             import traceback
             traceback.print_exc()
             results[test_name] = False
-    
-    # Summary
-    print("\n" + "#"*70)
+
+    print("\n" + "#" * 70)
     print("# Test Summary")
-    print("#"*70)
-    
-    passed = sum(1 for v in results.values() if v)
+    print("#" * 70)
+    passed = sum(1 for value in results.values() if value)
     total = len(results)
-    
     for test_name, result in results.items():
-        status = "✅ PASS" if result else "❌ FAIL"
+        status = "PASS" if result else "FAIL"
         print(f"{status} - {test_name}")
-    
     print(f"\nTotal: {passed}/{total} tests passed")
-    
-    if passed == total:
-        print("\n🎉 All tests passed!")
-        return 0
-    else:
-        print(f"\n⚠️ {total - passed} test(s) failed")
-        return 1
+    return 0 if passed == total else 1
 
 
 if __name__ == "__main__":
-    exit(main())
-
+    raise SystemExit(main())
