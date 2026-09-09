@@ -163,6 +163,13 @@ def _capture_profile_trigger_evidence(package: FairAcousticPackage) -> list[dict
     return payload
 
 
+def _stable_generic_result(payload: dict) -> dict:
+    """Remove volatile run metadata from the generic stewardship fingerprint."""
+    stable = dict(payload)
+    stable.pop("assessment_timestamp", None)
+    return stable
+
+
 class FairStewardshipService:
     """Adapter that keeps the existing lifecycle engines authoritative for stewardship decisions."""
 
@@ -236,7 +243,14 @@ class FairStewardshipService:
         result = TieredValidator(float(package.metadata.get("thickness_tolerance_m", 0.02))).validate_all(wall, record, previous_status)
         engine_status = result.overall_status.value
         payload = result.to_dict()
-        fingerprint = hashlib.sha256(json.dumps({"wall": wall.__dict__, "record": record.__dict__, "result": payload}, sort_keys=True, default=str).encode()).hexdigest()
+        fingerprint_payload = {
+            "wall": wall.__dict__,
+            "record": record.__dict__,
+            "result": _stable_generic_result(payload),
+        }
+        fingerprint = hashlib.sha256(
+            json.dumps(fingerprint_payload, sort_keys=True, default=str).encode()
+        ).hexdigest()
         last = package.stewardship_history[-1] if package.stewardship_history else None
         created = not last or last.get("fingerprint") != fingerprint
         same_series = [entry for entry in package.stewardship_history if entry.get("mapping_series_uri") == series_uri]
