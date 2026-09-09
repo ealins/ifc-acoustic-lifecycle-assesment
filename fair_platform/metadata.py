@@ -106,8 +106,7 @@ def _add_completeness_assessment(graph: Graph, package_uri: URIRef, package: Fai
         graph.add((node, DCTERMS.identifier, Literal(str(assessment["assessment_id"]))))
     if assessment.get("profile_id"):
         graph.add((node, DCTERMS.conformsTo, URIRef(str(assessment["profile_id"]))))
-    summary = assessment.get("summary") or {}
-    _add_context(graph, node, summary)
+    _add_context(graph, node, assessment.get("summary") or {})
     for index, item in enumerate(assessment.get("fields", []) or [], start=1):
         field_node = URIRef(f"{node}/field/{index}")
         graph.add((field_node, RDF.type, FAIRAC.MetadataFieldAssessment))
@@ -153,7 +152,6 @@ def build_metadata_graph(package: FairAcousticPackage) -> Graph:
     graph.add((package_uri, FAIRAC.lifecycleStatus, Literal(package.lifecycle_status)))
     graph.add((package_uri, FAIRAC.scientificSuitabilityStatus, Literal(package.scientific_suitability_status)))
 
-    # Legacy FAIR booleans remain compatibility evidence only.
     graph.add((package_uri, FAIRAC.legacyFairStatus, Literal(package.fair_status.value)))
     graph.add((package_uri, FAIRAC.findable, Literal(package.findable, datatype=XSD.boolean)))
     graph.add((package_uri, FAIRAC.accessible, Literal(package.accessible, datatype=XSD.boolean)))
@@ -217,9 +215,11 @@ def build_metadata_graph(package: FairAcousticPackage) -> Graph:
         graph.add((research_uri, PROV.used, measurement_uri))
         _add_context(graph, research_uri, package.research_context)
     if package.simulation_context:
-        # This node only describes provenance of supplied simulation/prediction results;
-        # the application itself does not run acoustic simulation.
+        # Retain the established AcousticSimulationStudy class for backward-compatible
+        # RDF consumers while explicitly scoping it to provenance of supplied results.
+        graph.add((package_uri, FAIRAC.hasSimulationStudy, simulation_uri))
         graph.add((package_uri, FAIRAC.hasGenerationContext, simulation_uri))
+        graph.add((simulation_uri, RDF.type, FAIRAC.AcousticSimulationStudy))
         graph.add((simulation_uri, RDF.type, PROV.Activity))
         graph.add((simulation_uri, PROV.used, geometry_uri))
         _add_context(graph, simulation_uri, package.simulation_context)
