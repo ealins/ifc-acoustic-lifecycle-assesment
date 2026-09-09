@@ -61,6 +61,7 @@ class MetadataCompletenessAssessment:
         "Metadata completeness is not FAIR certification.",
         "Metadata completeness is not evidence that acoustic values are scientifically valid or suitable for a new design case.",
         "NOT_VERIFIED means the metadata value or external condition was recorded but not independently verified by this prototype.",
+        "A local package identifier can satisfy prototype identity while the FAIR-support evaluator separately distinguishes it from a registered/resolvable persistent identifier.",
     ])
 
     @property
@@ -79,11 +80,10 @@ class MetadataCompletenessAssessment:
             item for item in self.active_required
             if item.status in {MetadataFieldStatus.MISSING, MetadataFieldStatus.INVALID}
         ]
-        by_name = {item.field_name: item for item in required_failures}
-        field_defs = {item.field_name: definition for definition in PROFILE_FIELDS for item in required_failures if definition.field_name == item.field_name}
-        if any(field_defs[name].interpretation_critical for name in by_name if name in field_defs):
+        definitions = {definition.field_name: definition for definition in PROFILE_FIELDS}
+        if any(definitions[item.field_name].interpretation_critical for item in required_failures if item.field_name in definitions):
             return MetadataCompletenessStatus.INSUFFICIENT_FOR_INTERPRETATION
-        if any(field_defs[name].reuse_critical for name in by_name if name in field_defs):
+        if any(definitions[item.field_name].reuse_critical for item in required_failures if item.field_name in definitions):
             return MetadataCompletenessStatus.INSUFFICIENT_FOR_REUSE
         if required_failures:
             return MetadataCompletenessStatus.PARTIALLY_COMPLETE
@@ -155,6 +155,9 @@ def _asset_record_for_measurement(package: FairAcousticPackage) -> dict[str, Any
 
 
 def _resolve(package: FairAcousticPackage, path: str) -> Any:
+    # Prototype identity and PID persistence are deliberately separate concerns.
+    if path == "identifier":
+        return package.identifier or package.package_id
     if path == "checksums.__measurement__":
         return package.checksums.get(package.measurement_reference)
     if path == "asset_records.__measurement__.size_bytes":
