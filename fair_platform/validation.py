@@ -55,16 +55,27 @@ def validate_serializations(package: FairAcousticPackage) -> list[ValidationIssu
     return issues
 
 
+def _known_asset_references(package: FairAcousticPackage) -> set[str]:
+    refs = set(package.assets)
+    for record in package.asset_records:
+        for key in ("path", "asset_id", "original_filename", "source_filename"):
+            value = record.get(key)
+            if value:
+                refs.add(str(value))
+    return refs
+
+
 def validate_research_object(package: FairAcousticPackage) -> dict[str, Any]:
     issues: list[ValidationIssue] = []
 
     def add(code: str, severity: str, message: str, entity: str, field: str | None = None) -> None:
         issues.append(ValidationIssue(code, severity, message, entity, field))
 
+    explicit_title = str(package.metadata.get("title") or "").strip()
     if not package.package_id:
-        add("PACKAGE_ID_MISSING", "ERROR", "Research object has no package identifier.", "research_object", "package_id")
-    if not package.title.strip():
-        add("PACKAGE_TITLE_MISSING", "ERROR", "Research object title is missing; no title was fabricated.", package.package_id, "title")
+        add("PACKAGE_ID_MISSING", "ERROR", "Research object has no local package identifier.", "research_object", "package_id")
+    if not explicit_title:
+        add("PACKAGE_TITLE_MISSING", "ERROR", "Research object title is missing; the UI fallback label is not treated as supplied descriptive metadata.", package.package_id, "title")
     if not package.ifc_global_id:
         add("IFC_GLOBALID_MISSING", "ERROR", "No selected IFC GlobalId is recorded for the component relationship.", package.package_id, "ifc_global_id")
     for required in (package.geometry_reference, package.measurement_reference):
@@ -98,6 +109,7 @@ def validate_research_object(package: FairAcousticPackage) -> dict[str, Any]:
     if origin == MeasurementOrigin.UNKNOWN.value:
         add("MEASUREMENT_ORIGIN_UNKNOWN", "WARNING", "Acoustic dataset origin is unknown; origin was not inferred from file structure.", measurement_id or package.measurement_reference, "origin_classification")
 
+    known_asset_refs = _known_asset_references(package)
     relationship_ids: set[str] = set()
     for relationship in package.relationships:
         rid = str(relationship.get("relationship_id") or "")
@@ -125,7 +137,7 @@ def validate_research_object(package: FairAcousticPackage) -> dict[str, Any]:
                 add("EVIDENCE_ID_DUPLICATE", "ERROR", f"Evidence identifier '{eid}' occurs more than once.", rid, "evidence")
             evidence_ids.add(eid)
             source_asset = item.get("source_asset")
-            if source_asset and source_asset not in package.assets and not valid_uri(str(source_asset)):
+            if source_asset and str(source_asset) not in known_asset_refs and not valid_uri(str(source_asset)):
                 add("EVIDENCE_SOURCE_UNKNOWN", "ERROR", f"Evidence '{eid}' references unknown source '{source_asset}'.", eid, "source_asset")
         if not relationship.get("last_reviewed_at"):
             add("RELATIONSHIP_REVIEW_NOT_RECORDED", "INFO", f"Relationship '{rid}' has no recorded review date.", rid, "last_reviewed_at")
