@@ -7,6 +7,7 @@ on:
       - feature/fair-acoustic-platform
       - fix/visible-fair-capabilities
       - feature/acoustic-research-object-profile
+      - feature/acoustic-metadata-profile
   pull_request:
     branches: [main]
 
@@ -24,16 +25,20 @@ jobs:
           pip install -r requirements.txt pytest
       - name: Compile modules
         run: python -m compileall -q fair_platform dashboard app.py flask_app.py
-      - name: Import research-object application
+      - name: Import metadata-profile application
         env:
           PYTHONPATH: ${{ github.workspace }}
         run: |
-          python -c "import fair_platform; import dashboard.ui.research_builder; import dashboard.ui.research_enhanced_app"
+          python -c "import fair_platform; import fair_platform.metadata_profile; import fair_platform.completeness; import dashboard.ui.research_builder; import dashboard.ui.research_enhanced_app"
       - name: Run full test suite
         env:
           PYTHONPATH: ${{ github.workspace }}
         run: python -m pytest -q
-      - name: Research-object export smoke test
+      - name: Metadata-profile package smoke test
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: python -m pytest -q tests/test_metadata_profile_pivot.py::test_export_contains_profile_assessments_evidence_and_integrity_files
+      - name: Backward-compatible research-object smoke test
         env:
           PYTHONPATH: ${{ github.workspace }}
         run: python -m pytest -q tests/test_research_object_profile.py::test_ro_crate_turtle_manifest_and_zip_are_consistent

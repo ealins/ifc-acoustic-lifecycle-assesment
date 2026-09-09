@@ -1,138 +1,109 @@
-# Acoustic Component Research-Object Package Specification
+# Acoustic Component Package Specification
 
-**Status:** prototype package specification, profile version 0.1.
+## Scope
 
-## Package responsibilities
+This specification describes the prototype exchange layout for an `AcousticComponentResearchObject`. The domain object is primary; the ZIP archive is one exchange serialization.
 
-The research object is a structured information model, not merely a ZIP archive. The archive is one portable serialization of the in-memory domain model.
-
-Metadata authorities are deliberately separated:
-
-1. **In-memory domain model** — authoritative application state.
-2. **`ro-crate-metadata.json`** — principal portable research-object representation using JSON-LD entity/relationship concepts.
-3. **`metadata.ttl`** — domain RDF serialization for IFC identity references, acoustic data, qualified relationships, evidence, provenance, FAIR-support/lifecycle assessments, and preserved stewardship RDF.
-4. **`manifest.json`** — simplified application/compatibility manifest derived from the same model.
-
-The three files must not be independently edited as competing metadata authorities. Export regenerates them from the in-memory model.
-
-## Preferred archive layout
+## Recommended archive layout
 
 ```text
-package-root/
-  ro-crate-metadata.json
-  metadata.ttl
-  manifest.json
-  geometry/
-    <original-model.ifc>
-  measurements/
-    <original-acoustic-data.*>
-  simulation/
-    <optional solver inputs/outputs/meshes/logs>
-  research/
-    <optional scripts/notebooks/protocols/supporting data>
-  reports/
-    fair-assessment.json
-    lifecycle-assessment.json
-    relationship-evidence.json
-    package-validation.json
-  checksums/
-    sha256sums.txt
-  README.txt
+acoustic-component-package/
+├── ro-crate-metadata.json
+├── metadata.ttl
+├── manifest.json
+├── profiles/
+│   └── acoustic-metadata-profile.json
+├── geometry/
+│   └── source-model.ifc
+├── measurements/
+│   ├── primary-acoustic-record.*
+│   └── related-acoustic-records.*
+├── evidence/
+│   └── relationship-evidence.json
+├── reports/
+│   ├── metadata-completeness-assessment.json
+│   ├── fair-support-assessment.json
+│   ├── relationship-lifecycle-assessment.json
+│   └── package-validation.json
+├── checksums/
+│   └── sha256sums.txt
+└── README.txt
 ```
 
-The compatibility builder can still emit the historical root `geometry.ifc` and `measurement.<ext>` paths for older tests/integrations.
+Legacy report paths remain temporarily available for backward compatibility.
 
-## Packaged assets
+## Serialization authority
 
-Each packaged source/research asset records where available:
+1. The in-memory Python domain model is authoritative during application execution.
+2. `ro-crate-metadata.json` is the principal portable research-object representation.
+3. `metadata.ttl` contains domain RDF, provenance, qualified relationship/evidence and assessment entities.
+4. `manifest.json` is a simplified derived application/compatibility asset index.
+5. `profiles/acoustic-metadata-profile.json` is generated from the executable profile registry in `fair_platform/metadata_profile.py`.
 
-- asset identifier;
-- original filename;
-- relative archive path;
+Derived files are regenerated from the in-memory model. They must not be independently edited as competing authorities.
+
+## Local assets
+
+For a local embedded asset the manifest/RO model records, where applicable:
+
+- asset ID;
 - role;
+- safe relative path;
+- original filename;
 - media type;
 - byte size;
 - SHA-256 checksum;
-- source version; and
-- `packaged: true`.
+- source/dataset version.
 
-Relative paths must not be absolute and must not contain `..` traversal segments. Repository persistence applies the same restriction before writing nested resources.
+The complete IFC file remains authoritative for geometry. Metadata identify/summarize the selected component without duplicating complete geometry.
 
 ## External assets
 
-An external asset can be represented by URI without fabricated local bytes. External evidence should record:
+A metadata-only external acoustic resource records:
 
-- URI;
+- asset/dataset ID;
 - role;
-- version if known;
-- access conditions;
-- access status (`REACHABLE`, `UNREACHABLE`, `NOT_TESTED`/equivalent);
-- status-check timestamp when a check actually occurred; and
-- authentication requirements if known.
+- source URI;
+- media type when known;
+- access rights;
+- reachability/access status;
+- last access-check timestamp when a check occurred;
+- source version when known.
 
-A checksum is never created for a resource that has not been retrieved. URI syntax alone is not evidence of reachability.
+If source bytes were not retrieved, the package must not fabricate a byte size or checksum. Metadata can remain available even if the data become unavailable.
 
-## Checksums
+## Required package relationships
 
-`checksums/sha256sums.txt` records SHA-256 hashes for retrievable package resources. The checksum-list file itself and the manifest are not self-hashed to avoid circular/self-referential checksum definitions. `manifest.json` exposes the same derived checksum evidence where applicable.
+The portable metadata must resolve:
 
-## Reports
+- root research object → IFC source;
+- root research object → selected IFC component;
+- root research object → acoustic dataset(s);
+- selected component ↔ acoustic dataset through an explicit qualified relationship;
+- relationship → evidence items;
+- package → metadata-completeness report;
+- package → FAIR-support report;
+- package → relationship-lifecycle report;
+- package → profile version;
+- provenance entities/activities where supplied.
 
-### `reports/fair-assessment.json`
+## Integrity rules
 
-Stores the selected FAIR-support profile/version, assessment identity/date, overall prototype-readiness label, criterion statuses, evidence, recommendations, and limitations. It is not a certification report.
+Validation checks include safe relative paths, asset existence, no path traversal, checksums for retrieved local assets, no fabricated external checksums/sizes, JSON-LD parsing, Turtle parsing, metadata-profile snapshot version, relationship references, evidence-source references, source-version consistency and report-to-package identity.
 
-### `reports/lifecycle-assessment.json`
+`checksums/sha256sums.txt` excludes self-referential checksum/manifest cycles. Checksums are independently recalculable from the archive bytes.
 
-Stores the relationship stewardship state, MappingSeries/MappingAssertion references where generated, reassessment triggers, stewardship history, and the explicit scope note that lifecycle does not determine FAIRness or scientific validity.
+## Assessment separation
 
-### `reports/relationship-evidence.json`
+The package stores these outcomes independently:
 
-Serializes qualified `GeometryMeasurementRelationship` entities and their structured `EvidenceItem` records.
+- metadata completeness;
+- selected FAIR support;
+- relationship lifecycle status;
+- acoustic scientific suitability (`NOT_ASSESSED` by default).
 
-### `reports/package-validation.json`
+No combined FAIR/acoustic-quality score is produced.
 
-Stores structural validation results such as missing assets, unsafe paths, checksum failures, invalid RDF/JSON-LD, missing relationship rationale/evidence, and unresolved identifiers.
+## Limitations
 
-## `ro-crate-metadata.json`
-
-The file uses RO-Crate-style JSON-LD entity graph concepts to represent:
-
-- the root research object;
-- profile declaration;
-- IFC file and selected IFC component;
-- acoustic dataset;
-- research/simulation assets;
-- qualified relationship and evidence entities;
-- FAIR-support assessment;
-- lifecycle assessment; and
-- report/domain-RDF files.
-
-The repository uses a self-contained context for offline prototype validation. This implementation should be described as **RO-Crate-style / RO-Crate-aligned prototype packaging**, not an assertion that the custom profile has been registered or approved by the RO-Crate community.
-
-## `metadata.ttl`
-
-Turtle uses established vocabularies where suitable (RDF, Dublin Core Terms, DCAT, PROV, Schema.org references) together with documented prototype `fairac:` terms. The system does not convert the full IFC model into RDF; the IFC component is represented using a lightweight identity/reference pattern.
-
-## `manifest.json`
-
-The application manifest includes:
-
-- package/profile identity;
-- synchronization/authority notes;
-- indexed assets;
-- geometry/acoustic resource summaries;
-- relationships;
-- research/simulation context;
-- FAIR-support state;
-- legacy FAIR compatibility evidence;
-- lifecycle state/triggers;
-- scientific-suitability state;
-- validation evidence; and
-- checksums.
-
-It is a convenience export, not the primary portable metadata authority.
-
-## Export validation
-
-Strict research-object export fails when structural validation contains `ERROR` issues. Backward-compatible `export_fair_package()` continues to produce a ZIP with validation evidence even when older packages lack the new qualified relationship, allowing legacy code/tests to remain operable during migration.
+This package format is a thesis prototype profile layered on generic research-object/RO-Crate concepts. It is not a certified repository package standard, long-term preservation guarantee, universal acoustic metadata standard or scientific-validity certificate.

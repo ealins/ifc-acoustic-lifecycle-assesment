@@ -100,9 +100,11 @@ class FairAssessmentResult:
 class FairAcousticPackage:
     """Backward-compatible storage model for an acoustic component research object.
 
-    The in-memory model is authoritative. RO-Crate JSON-LD is the principal portable
-    representation, metadata.ttl represents domain/provenance relationships, and
-    manifest.json remains a simplified application manifest.
+    The in-memory model is authoritative. ``ro-crate-metadata.json`` is the
+    principal portable representation, ``metadata.ttl`` represents domain and
+    provenance relationships, and ``manifest.json`` remains an application
+    compatibility manifest. The ZIP is an exchange serialization, not the domain
+    model itself.
     """
 
     package_id: str
@@ -125,9 +127,13 @@ class FairAcousticPackage:
     dataset_uri: Optional[str] = None
     mapping_series_uri: Optional[str] = None
     latest_mapping_assertion_uri: Optional[str] = None
-    research_object_profile: str = "https://example.org/fair-acoustic/profile/acoustic-component-ro/0.1"
+    research_object_profile: str = "https://example.org/fair-acoustic/profile/acoustic-component-ro/0.2"
+    metadata_profile: str = "https://example.org/fair-acoustic/profile/acoustic-component-metadata/0.2"
+    metadata_profile_version: str = "0.2"
+    acoustic_datasets: list[dict[str, Any]] = field(default_factory=list)
     relationships: list[dict[str, Any]] = field(default_factory=list)
     asset_records: list[dict[str, Any]] = field(default_factory=list)
+    metadata_completeness_status: str = "VALIDATION_INCOMPLETE"
     fair_support_status: str = "ASSESSMENT_INCOMPLETE"
     scientific_suitability_status: str = "NOT_ASSESSED"
     fair_status: FairStatus = FairStatus.PARTIALLY_FAIR
@@ -137,6 +143,7 @@ class FairAcousticPackage:
     interoperable: bool = False
     reusable: bool = False
     metadata: dict[str, Any] = field(default_factory=dict)
+    metadata_completeness_assessment: dict[str, Any] = field(default_factory=dict)
     fair_assessment: dict[str, Any] = field(default_factory=dict)
     fair_support_assessment: dict[str, Any] = field(default_factory=dict)
     stewardship_history: list[dict[str, Any]] = field(default_factory=list)
@@ -157,11 +164,21 @@ class FairAcousticPackage:
     def object_type(self) -> str:
         return "AcousticComponentResearchObject"
 
+    @property
+    def independent_outcomes(self) -> dict[str, str]:
+        return {
+            "metadata_completeness": self.metadata_completeness_status,
+            "fair_support": self.fair_support_status,
+            "relationship_lifecycle": self.lifecycle_display_status,
+            "acoustic_scientific_suitability": self.scientific_suitability_status,
+        }
+
     def to_dict(self, include_assets: bool = False) -> dict[str, Any]:
         data = asdict(self)
         data["fair_status"] = self.fair_status.value
         data["lifecycle_display_status"] = self.lifecycle_display_status
         data["object_type"] = self.object_type
+        data["independent_outcomes"] = self.independent_outcomes
         if not include_assets:
             data.pop("assets", None)
         return data
@@ -176,10 +193,11 @@ class FairAcousticPackage:
 
 @dataclass
 class AcousticComponentResearchObject(FairAcousticPackage):
-    """Preferred domain name for new code; inherits legacy package compatibility."""
+    """Preferred domain name for new metadata-centered research-object workflows."""
 
     pass
 
 
-# Compatibility alias for terminology used in thesis text and older integrations.
+# Compatibility aliases used in thesis text and older integrations.
 AcousticComponentPackage = AcousticComponentResearchObject
+FairAcousticComponentPackage = AcousticComponentResearchObject
