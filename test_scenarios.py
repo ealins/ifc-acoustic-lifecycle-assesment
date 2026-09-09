@@ -10,9 +10,7 @@ from lifecycle_engine.evaluation_runner import run_lifecycle_evaluation
 
 
 def test_ambiguous_then_identical():
-    """Test: AMBIGUOUS initial, then identical rerun."""
-    print("\n=== TEST 1: Ambiguous Association ===")
-    
+    """AMBIGUOUS initial assessment, then identical rerun creates no revision."""
     wall = {
         "global_id": "wall-001",
         "name": "Metal Frame",
@@ -21,13 +19,12 @@ def test_ambiguous_then_identical():
         "material_evidence": ["Stud 75mm", "Batt 100mm"],
         "model_version": "v1",
     }
-    
     record = {
         "uri": "https://example.org/rec/001",
         "identifier": "rec-001",
         "assembly": "M75_B100",
         "construction_family": "metal_frame",
-        "total_thickness_m": 0.100,  # Mismatch!
+        "total_thickness_m": 0.100,
         "rw": 44.1,
         "unit": "dB",
         "source": "VaBDat",
@@ -35,29 +32,21 @@ def test_ambiguous_then_identical():
         "year": 2024,
         "available": True,
     }
-    
-    # First run
+
     result1 = run_lifecycle_evaluation(wall, record)
-    print(f"Status: {result1['assessment']['semantic_status']}")
-    print(f"Action: {result1['revision_action']}")
-    assert result1['assessment']['semantic_status'] == 'ambiguous'
-    assert result1['revision_action'] == 'created_revision'
-    
-    # Identical rerun
-    print("\n=== TEST 2: Identical Rerun (No Revision) ===")
-    result2 = run_lifecycle_evaluation(wall, record, previous_assessment=result1['assessment'])
-    print(f"Status: {result2['assessment']['semantic_status']}")
-    print(f"Action: {result2['revision_action']}")
-    print(f"Changes: {result2['change_report']['overall_category'] if result2['change_report'] else 'none'}")
-    assert result2['revision_action'] == 'no_change_no_revision'
-    
-    return result1['assessment']
+    assert result1["assessment"]["semantic_status"] == "ambiguous"
+    assert result1["revision_action"] == "created_revision"
+
+    result2 = run_lifecycle_evaluation(
+        wall,
+        record,
+        previous_assessment=result1["assessment"],
+    )
+    assert result2["revision_action"] == "no_change_no_revision"
 
 
 def test_acoustic_change():
-    """Test: Acoustic content change."""
-    print("\n=== TEST 3: Acoustic Content Change ===")
-    
+    """A changed acoustic value creates a new revision."""
     wall = {
         "global_id": "wall-001",
         "name": "Metal Frame",
@@ -66,39 +55,31 @@ def test_acoustic_change():
         "material_evidence": ["Stud 75mm"],
         "model_version": "v1",
     }
-    
     record = {
         "uri": "https://example.org/rec/001",
         "identifier": "rec-001",
         "assembly": "M75",
         "construction_family": "metal_frame",
         "total_thickness_m": 0.100,
-        "rw": 45.0,  # Changed
+        "rw": 45.0,
         "unit": "dB",
         "source": "VaBDat",
         "report_reference": "VAB-001",
         "year": 2024,
         "available": True,
     }
-    
-    prev_assessment = {
+    previous = {
         "ifc_global_id": "wall-001",
         "record_id": "rec-001",
         "semantic_status": "ambiguous",
         "confidence": 0.65,
     }
-    
-    result = run_lifecycle_evaluation(wall, record, previous_assessment=prev_assessment)
-    print(f"Action: {result['revision_action']}")
-    print(f"Meaningful Changes: {result.get('change_report', {}).get('has_meaningful_changes', 'N/A')}")
-    assert result['revision_action'] == 'created_revision'
-    print("✓ PASS: Acoustic change triggers revision")
+    result = run_lifecycle_evaluation(wall, record, previous_assessment=previous)
+    assert result["revision_action"] == "created_revision"
 
 
 def test_resource_broken():
-    """Test: Resource unavailable."""
-    print("\n=== TEST 4: Resource Unavailable (BROKEN) ===")
-    
+    """Unavailable external resource produces BROKEN."""
     wall = {
         "global_id": "wall-001",
         "name": "Metal Frame",
@@ -107,7 +88,6 @@ def test_resource_broken():
         "material_evidence": ["Stud"],
         "model_version": "v1",
     }
-    
     record = {
         "uri": "https://example.org/rec/001",
         "identifier": "rec-001",
@@ -119,34 +99,32 @@ def test_resource_broken():
         "source": "VaBDat",
         "report_reference": "VAB-001",
         "year": 2024,
-        "available": False,  # Unavailable
+        "available": False,
     }
-    
     result = run_lifecycle_evaluation(wall, record)
-    print(f"Status: {result['assessment']['semantic_status']}")
-    print(f"Technical Status: {result['assessment']['technical_status']}")
-    assert result['assessment']['semantic_status'] == 'broken'
-    print("✓ PASS: Unavailable resource → BROKEN status")
+    assert result["assessment"]["semantic_status"] == "broken"
 
 
-def test_invalid_family():
-    """Test: Invalid - family mismatch."""
-    print("\n=== TEST 5: Invalid Association (Family Mismatch) ===")
-    
+def test_family_mismatch_with_aligned_thickness_is_ambiguous():
+    """A single contradictory criterion is AMBIGUOUS, not INVALID.
+
+    The lifecycle engine defines INVALID only when both construction family and
+    thickness diverge. Here the 10 mm thickness difference is within the default
+    20 mm tolerance, so only the family criterion conflicts.
+    """
     wall = {
         "global_id": "wall-002",
         "name": "Concrete",
-        "construction_family": "concrete",  # Different
+        "construction_family": "concrete",
         "total_thickness_m": 0.285,
         "material_evidence": ["Concrete"],
         "model_version": "v1",
     }
-    
     record = {
         "uri": "https://example.org/rec/002",
         "identifier": "rec-002",
         "assembly": "M75",
-        "construction_family": "metal_frame",  # Different
+        "construction_family": "metal_frame",
         "total_thickness_m": 0.275,
         "rw": 50.0,
         "unit": "dB",
@@ -155,37 +133,26 @@ def test_invalid_family():
         "year": 2024,
         "available": True,
     }
-    
     result = run_lifecycle_evaluation(wall, record)
-    print(f"Status: {result['assessment']['semantic_status']}")
-    print(f"Reason: {result['assessment']['reason']}")
-    assert result['assessment']['semantic_status'] == 'invalid'
-    print("✓ PASS: Family contradiction → INVALID status")
+    assert result["assessment"]["semantic_status"] == "ambiguous"
 
 
 def run_tests():
-    """Run all tests."""
-    print("\n" + "="*70)
-    print("GeoBIM LIFECYCLE ENGINE - RIGOROUS CHANGE DETECTION TESTS")
-    print("="*70)
-    
+    tests = [
+        test_ambiguous_then_identical,
+        test_acoustic_change,
+        test_resource_broken,
+        test_family_mismatch_with_aligned_thickness_is_ambiguous,
+    ]
     try:
-        test_ambiguous_then_identical()
-        test_acoustic_change()
-        test_resource_broken()
-        test_invalid_family()
-        
-        print("\n" + "="*70)
-        print("✅ ALL TESTS PASSED")
-        print("="*70)
+        for test in tests:
+            test()
+        print("ALL LIFECYCLE SCENARIO TESTS PASSED")
         return True
-    except Exception as e:
-        print(f"\n❌ TEST FAILED: {e}")
-        import traceback
-        traceback.print_exc()
+    except Exception as exc:
+        print(f"TEST FAILED: {exc}")
         return False
 
 
 if __name__ == "__main__":
-    success = run_tests()
-    sys.exit(0 if success else 1)
+    sys.exit(0 if run_tests() else 1)
