@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from rdflib import Graph, Namespace
+from rdflib import Graph, Namespace, RDF
 
 from .metadata import build_metadata_graph
 from .models import FairAcousticPackage
@@ -47,7 +47,7 @@ def validate_package_shacl(package: FairAcousticPackage, shapes_path: str | Path
     )
 
     results = []
-    for node in report_graph.subjects(predicate=None, object=SH.ValidationResult):
+    for node in report_graph.subjects(RDF.type, SH.ValidationResult):
         messages = [str(value) for value in report_graph.objects(node, SH.resultMessage)]
         paths = [str(value) for value in report_graph.objects(node, SH.resultPath)]
         focus_nodes = [str(value) for value in report_graph.objects(node, SH.focusNode)]
