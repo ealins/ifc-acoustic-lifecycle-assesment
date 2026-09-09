@@ -27,23 +27,47 @@ def build_manifest(package: FairAcousticPackage) -> dict[str, Any]:
     """Build the derived application compatibility manifest.
 
     ``manifest.json`` deliberately keeps the historical v2 schema identifier and
-    legacy resource fields so older integrations continue to work. New research-
-    object semantics are additive. The authoritative portable research-object
-    representation is ``ro-crate-metadata.json``, not this compatibility view.
+    legacy resource fields so older integrations continue to work. New metadata-
+    profile and research-object semantics are additive. ``ro-crate-metadata.json``
+    remains the principal portable research-object representation.
     """
     asset_index: dict[str, Any] = {}
     records = {item.get("path"): item for item in package.asset_records if item.get("path")}
-    for path, payload in sorted(package.assets.items()):
-        record = records.get(path, {})
+
+    # External assets are indexed even when their bytes are not embedded.
+    for path, record in sorted(records.items()):
+        packaged = bool(record.get("packaged", path in package.assets))
         asset_index[path] = {
             "path": path,
             "asset_id": record.get("asset_id") or f"asset:{path}",
-            "role": record.get("role") or (
+            "role": record.get("role"),
+            "media_type": record.get("media_type") or _media_type(package, path),
+            "size_bytes": record.get("size_bytes") if packaged else None,
+            "checksum": package.checksums.get(path) if packaged else None,
+            "original_filename": record.get("original_filename") or record.get("source_filename"),
+            "version": record.get("version"),
+            "packaged": packaged,
+            "source_uri": record.get("source_uri"),
+            "access_rights": record.get("access_rights"),
+            "reachability_status": record.get("reachability_status"),
+            "last_check_time": record.get("last_check_time"),
+        }
+
+    for path, payload in sorted(package.assets.items()):
+        record = records.get(path, {})
+        existing = asset_index.get(path, {})
+        asset_index[path] = {
+            **existing,
+            "path": path,
+            "asset_id": record.get("asset_id") or existing.get("asset_id") or f"asset:{path}",
+            "role": record.get("role") or existing.get("role") or (
                 "ifc-model" if path == package.geometry_reference
                 else "primary-acoustic-dataset" if path == package.measurement_reference
                 else "portable-metadata" if path == "ro-crate-metadata.json"
+                else "metadata-profile" if path == "profiles/acoustic-metadata-profile.json"
                 else "domain-rdf" if path == package.metadata_reference
                 else "application-manifest" if path == "manifest.json"
+                else "relationship-evidence" if path.startswith("evidence/")
                 else "assessment-report" if path.startswith("reports/")
                 else "checksum-report" if path.startswith("checksums/")
                 else "research-object-resource"
@@ -51,8 +75,8 @@ def build_manifest(package: FairAcousticPackage) -> dict[str, Any]:
             "media_type": _media_type(package, path),
             "size_bytes": len(payload),
             "checksum": package.checksums.get(path),
-            "original_filename": record.get("original_filename") or record.get("source_filename"),
-            "version": record.get("version"),
+            "original_filename": record.get("original_filename") or record.get("source_filename") or existing.get("original_filename"),
+            "version": record.get("version") or existing.get("version"),
             "packaged": True,
         }
 
@@ -67,11 +91,12 @@ def build_manifest(package: FairAcousticPackage) -> dict[str, Any]:
                     "asset_id": record.get("asset_id") or f"asset:{path}",
                     "role": record.get("role"),
                     "media_type": record.get("media_type") or "application/octet-stream",
-                    "size_bytes": len(package.assets.get(path, b"")),
+                    "size_bytes": record.get("size_bytes"),
                     "checksum": package.checksums.get(path),
                     "original_filename": record.get("original_filename") or record.get("source_filename"),
                     "version": record.get("version"),
                     "packaged": path in package.assets,
+                    "source_uri": record.get("source_uri"),
                 }
             result.append(indexed)
         return result
@@ -96,19 +121,26 @@ def build_manifest(package: FairAcousticPackage) -> dict[str, Any]:
 
     return {
         "schema": "https://example.org/fair-acoustic/manifest/v2",
-        "manifest_profile": "acoustic-component-research-object-compatibility-v3",
+        "manifest_profile": "acoustic-component-research-object-compatibility-v4",
         "object_type": package.object_type,
         "profile": package.research_object_profile,
+        "metadata_profile": {
+            "id": package.metadata_profile,
+            "version": package.metadata_profile_version,
+            "machine_readable_snapshot": "profiles/acoustic-metadata-profile.json",
+        },
         "research_object": {
             "object_type": package.object_type,
             "profile": package.research_object_profile,
+            "metadata_profile": package.metadata_profile,
             "portable_metadata": "ro-crate-metadata.json",
             "domain_rdf": package.metadata_reference,
         },
         "metadata_authority": {
             "in_memory_domain_model": "authoritative application state",
             "ro-crate-metadata.json": "principal portable research-object representation",
-            package.metadata_reference: "domain-specific RDF relationships, provenance and stewardship representation",
+            package.metadata_reference: "domain-specific RDF relationships, provenance and assessment representation",
+            "profiles/acoustic-metadata-profile.json": "derived snapshot of the executable acoustic metadata profile",
             "manifest.json": "simplified application/compatibility manifest derived from the in-memory model",
         },
         "package_id": package.package_id,
@@ -123,8 +155,10 @@ def build_manifest(package: FairAcousticPackage) -> dict[str, Any]:
         "resources": {
             "geometry": geometry_resource,
             "measurement": measurement_resource,
+            "acoustic_datasets": package.acoustic_datasets,
             "ro_crate_metadata": asset_index.get("ro-crate-metadata.json", {}),
             "domain_rdf": asset_index.get(package.metadata_reference, {}),
+            "metadata_profile": asset_index.get("profiles/acoustic-metadata-profile.json", {}),
         },
         "asset_index": asset_index,
         "relationships": package.relationships,
@@ -132,9 +166,16 @@ def build_manifest(package: FairAcousticPackage) -> dict[str, Any]:
             "context": package.research_context,
             "resources": supplementary(package.metadata.get("research_resources")),
         },
+        # Retained only to describe imported simulation-result provenance/artefacts;
+        # the application does not perform acoustic simulation.
         "simulation": {
             "context": package.simulation_context,
             "resources": supplementary(package.metadata.get("simulation_resources")),
+        },
+        "metadata_completeness": {
+            "status": package.metadata_completeness_status,
+            "assessment": package.metadata_completeness_assessment,
+            "scope_note": "Metadata completeness is independent from FAIR support, lifecycle status, and acoustic scientific validity.",
         },
         "fair_support": {
             "status": package.fair_support_status,
@@ -154,8 +195,9 @@ def build_manifest(package: FairAcousticPackage) -> dict[str, Any]:
         },
         "scientific_suitability": {
             "status": package.scientific_suitability_status,
-            "scope_note": "Acoustic scientific validity/suitability is not inferred from FAIR or lifecycle metadata.",
+            "scope_note": "Acoustic scientific validity/suitability is not inferred from metadata completeness, FAIR support, or lifecycle metadata.",
         },
+        "independent_outcomes": package.independent_outcomes,
         "validation": {
             "package": package.validation_report,
             "shacl": package.metadata.get("shacl_validation", {}),
