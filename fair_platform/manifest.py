@@ -17,8 +17,22 @@ def build_manifest(package: FairAcousticPackage) -> dict[str, Any]:
             **extra,
         }
 
+    def supplementary(records: list[dict] | None) -> list[dict[str, Any]]:
+        result: list[dict[str, Any]] = []
+        for record in records or []:
+            path = str(record.get("path", ""))
+            result.append(
+                resource(
+                    path,
+                    str(record.get("media_type") or "application/octet-stream"),
+                    source_filename=record.get("source_filename"),
+                    role=record.get("role"),
+                )
+            )
+        return result
+
     return {
-        "schema": "https://example.org/fair-acoustic/manifest/v1",
+        "schema": "https://example.org/fair-acoustic/manifest/v2",
         "package_id": package.package_id,
         "identifier": package.identifier,
         "title": package.title,
@@ -42,6 +56,24 @@ def build_manifest(package: FairAcousticPackage) -> dict[str, Any]:
                 inspection=package.metadata.get("measurement_inspection"),
             ),
             "metadata": resource(package.metadata_reference, "text/turtle"),
+        },
+        "research": {
+            "context": package.research_context,
+            "resources": supplementary(package.metadata.get("research_resources")),
+        },
+        "simulation": {
+            "context": package.simulation_context,
+            "resources": supplementary(package.metadata.get("simulation_resources")),
+        },
+        "reproducibility": {
+            "software": package.simulation_context.get("software"),
+            "software_version": package.simulation_context.get("software_version"),
+            "numerical_method": package.simulation_context.get("numerical_method"),
+            "code_repository": package.research_context.get("code_repository"),
+            "code_commit": package.research_context.get("code_commit"),
+            "computational_environment": package.simulation_context.get("computational_environment"),
+            "random_seed": package.research_context.get("random_seed"),
+            "validation_method": package.research_context.get("validation_method"),
         },
         "fair": {
             "status": package.fair_status.value,
