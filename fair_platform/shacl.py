@@ -15,10 +15,10 @@ def _default_shapes_path() -> Path:
 
 
 def validate_package_shacl(package: FairAcousticPackage, shapes_path: str | Path | None = None) -> dict:
-    """Execute the repository's SHACL profile against generated package metadata.
+    """Execute the repository SHACL profile against generated package metadata.
 
-    Returns a compact, JSON-serializable validation report so conformance can be shown
-    in the UI and retained in package metadata/manifest evidence.
+    The returned report is JSON-serializable so conformance and individual violations
+    can be displayed in Streamlit and retained as package evidence.
     """
     try:
         from pyshacl import validate
