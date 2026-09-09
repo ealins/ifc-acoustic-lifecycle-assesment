@@ -6,7 +6,7 @@ import json
 from zipfile import ZIP_DEFLATED, ZipFile
 
 from .assessment import apply_assessment
-from .fair_support import apply_fair_support_assessment
+from .fair_support_policy import apply_fair_support_profile
 from .manifest import manifest_json
 from .metadata import metadata_turtle
 from .models import FairAcousticPackage
@@ -60,28 +60,26 @@ def _readme(package: FairAcousticPackage) -> bytes:
 
 def finalize_package(package: FairAcousticPackage) -> None:
     """Synchronize all derived portable representations from the in-memory model."""
-    # Remove previously generated derived resources so repeated finalization cannot
-    # accidentally treat stale reports as source evidence.
     for path in list(package.assets):
         if path in DERIVED_PATHS or path == package.metadata_reference:
             package.assets.pop(path, None)
 
-    # Source/research assets are checksum evidence available to RDF/RO-Crate.
+    # Source/research asset hashes are available to both RDF and RO-Crate generation.
     package.checksums = {path: _checksum(data) for path, data in package.assets.items()}
 
-    # A first RDF serialization enables legacy FAIR checks and SHACL without a
-    # circular self-checksum dependency.
+    # Legacy compatibility assessment still receives a real RDF serialization.
     package.assets[package.metadata_reference] = metadata_turtle(package).encode("utf-8")
     apply_assessment(package)
-    apply_fair_support_assessment(package)
 
-    # Domain RDF and SHACL are derived from the current domain states.
+    # Generate a preliminary portable JSON-LD graph before FAIR-support assessment,
+    # because JSON-LD/RO-Crate parseability is itself one of the selected indicators.
+    package.assets[RO_CRATE_METADATA] = ro_crate_json(package).encode("utf-8")
+    apply_fair_support_profile(package)
+
+    # Regenerate RDF and RO-Crate with the current assessment state, then run SHACL.
     package.assets[package.metadata_reference] = metadata_turtle(package).encode("utf-8")
     package.metadata["shacl_validation"] = validate_package_shacl(package)
     package.assets[package.metadata_reference] = metadata_turtle(package).encode("utf-8")
-
-    # RO-Crate is the principal portable package representation; it is generated
-    # from the same domain model rather than parsed from manifest.json.
     package.assets[RO_CRATE_METADATA] = ro_crate_json(package).encode("utf-8")
 
     package.assets["reports/fair-assessment.json"] = _json_bytes(package.fair_support_assessment)
@@ -101,8 +99,8 @@ def finalize_package(package: FairAcousticPackage) -> None:
     })
     package.assets["README.txt"] = _readme(package)
 
-    # Final checksums cover all retrievable assets except the checksum list and the
-    # manifest, which would otherwise introduce self-referential hashes.
+    # All retrievable package resources except the checksum list and manifest are
+    # hashed. Those two are intentionally excluded from self-referential hashing.
     package.checksums = {
         path: _checksum(data)
         for path, data in package.assets.items()
@@ -132,9 +130,18 @@ def export_fair_package(package: FairAcousticPackage) -> bytes:
     return buffer.getvalue()
 
 
+def _zip_bytes(package: FairAcousticPackage) -> bytes:
+    buffer = BytesIO()
+    with ZipFile(buffer, "w", ZIP_DEFLATED) as archive:
+        for path, content in sorted(package.assets.items()):
+            archive.writestr(path, content)
+    return buffer.getvalue()
+
+
 def export_research_object(package: FairAcousticPackage, *, strict: bool = True) -> bytes:
+    """Validate and export the preferred research-object archive without double-finalizing."""
     finalize_package(package)
     if strict and not package.validation_report.get("valid"):
         messages = [item.get("message") for item in package.validation_report.get("issues", []) if item.get("severity") == "ERROR"]
         raise ValueError("Research object validation failed: " + "; ".join(messages))
-    return export_fair_package(package)
+    return _zip_bytes(package)
