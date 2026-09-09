@@ -8,7 +8,7 @@ from uuid import uuid4
 from .models import utc_now
 
 
-PROFILE_ID = "https://example.org/fair-acoustic/profile/acoustic-component-ro/0.1"
+PROFILE_ID = "https://example.org/fair-acoustic/profile/acoustic-component-ro/0.2"
 PROFILE_LABEL = "Prototype Acoustic Component Research-Object Profile"
 
 
@@ -16,19 +16,22 @@ class MeasurementOrigin(str, Enum):
     RAW_MEASUREMENT = "raw_measurement"
     PROCESSED_MEASUREMENT = "processed_measurement"
     DERIVED_RESULT = "derived_result"
-    REFERENCE_VALUE = "reference_value"
-    MANUFACTURER_VALUE = "manufacturer_value"
-    PREDICTED_VALUE = "predicted_value"
     SIMULATION_RESULT = "simulation_result"
-    UNKNOWN = "unknown"
+    MANUFACTURER_VALUE = "manufacturer_value"
+    REFERENCE_VALUE = "reference_value"
+    CATALOG_RECORD = "catalog_record"
+    PREDICTED_VALUE = "predicted_value"
+    UNKNOWN_ORIGIN = "unknown_origin"
+    # Backward-compatible alias; iteration exposes UNKNOWN_ORIGIN only.
+    UNKNOWN = "unknown_origin"
 
 
 class RelationshipType(str, Enum):
     MEASURED_ON = "measuredOn"
     CHARACTERIZES = "characterizes"
     DERIVED_FROM_MEASUREMENT_OF = "derivedFromMeasurementOf"
-    APPLICABLE_TO_EQUIVALENT_ASSEMBLY = "applicableToEquivalentAssembly"
     PREDICTED_FOR = "predictedFor"
+    APPLICABLE_TO_EQUIVALENT_ASSEMBLY = "applicableToEquivalentAssembly"
     REFERENCES = "references"
     UNKNOWN = "unknownRelationship"
 
@@ -87,6 +90,7 @@ class EvidenceItem:
     source_asset: str | None = None
     source_location: str | None = None
     created_by: str | None = None
+    reviewed_by: str | None = None
     reliability: str | None = None
     notes: str | None = None
     evidence_id: str = field(default_factory=lambda: f"EVI-{uuid4().hex[:10].upper()}")
@@ -115,6 +119,7 @@ class ReassessmentTrigger:
     reassessment_required: bool
     resulting_state: LifecycleStewardshipState
     recommended_action: str
+    assessment_consequence: str = "Relationship evidence should be reassessed when this trigger is material."
     trigger_id: str = field(default_factory=lambda: f"TRG-{uuid4().hex[:10].upper()}")
     detected_at: str = field(default_factory=utc_now)
 
@@ -123,11 +128,20 @@ class ReassessmentTrigger:
         data["category"] = self.category.value
         data["severity"] = self.severity.value
         data["resulting_state"] = self.resulting_state.value
+        # Explicit aliases make exported trigger evidence align with the thesis terminology.
+        data["entity"] = self.affected_entity
+        data["timestamp"] = self.detected_at
+        data["previous_value"] = self.old_value
+        data["current_value"] = self.new_value
         return data
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "ReassessmentTrigger":
         payload = dict(data)
+        payload.pop("entity", None)
+        payload.pop("timestamp", None)
+        payload.pop("previous_value", None)
+        payload.pop("current_value", None)
         payload["category"] = TriggerCategory(payload["category"])
         payload["severity"] = TriggerSeverity(payload["severity"])
         payload["resulting_state"] = LifecycleStewardshipState(payload["resulting_state"])
@@ -150,12 +164,16 @@ class GeometryMeasurementRelationship:
     created_by: str | None = None
     approved_at: str | None = None
     approved_by: str | None = None
+    approval_status: str | None = None
     last_reviewed_at: str | None = None
     last_reviewed_by: str | None = None
     relationship_version: str = "1.0.0"
     source_component_version: str | None = None
     source_measurement_version: str | None = None
+    source_ifc_checksum: str | None = None
+    source_dataset_checksum: str | None = None
     status: LifecycleStewardshipState = LifecycleStewardshipState.UNASSESSED
+    recommended_action: str | None = None
     trigger_history: list[ReassessmentTrigger] = field(default_factory=list)
     decision_history: list[dict[str, Any]] = field(default_factory=list)
     supersedes_relationship: str | None = None
@@ -195,12 +213,16 @@ class GeometryMeasurementRelationship:
             "created_by": self.created_by,
             "approved_at": self.approved_at,
             "approved_by": self.approved_by,
+            "approval_status": self.approval_status,
             "last_reviewed_at": self.last_reviewed_at,
             "last_reviewed_by": self.last_reviewed_by,
             "relationship_version": self.relationship_version,
             "source_component_version": self.source_component_version,
             "source_measurement_version": self.source_measurement_version,
+            "source_ifc_checksum": self.source_ifc_checksum,
+            "source_dataset_checksum": self.source_dataset_checksum,
             "status": self.status.value,
+            "recommended_action": self.recommended_action,
             "trigger_history": [item.to_dict() for item in self.trigger_history],
             "decision_history": list(self.decision_history),
             "supersedes_relationship": self.supersedes_relationship,
@@ -218,6 +240,25 @@ class GeometryMeasurementRelationship:
         return cls(**payload)
 
 
+def relationship_type_allowed_for_origin(origin: MeasurementOrigin | str, relationship_type: RelationshipType | str) -> tuple[bool, str]:
+    """Return transparent compatibility guidance between dataset origin and relationship type."""
+    origin_value = origin.value if isinstance(origin, MeasurementOrigin) else str(origin)
+    relationship_value = relationship_type.value if isinstance(relationship_type, RelationshipType) else str(relationship_type)
+    measurement_origins = {MeasurementOrigin.RAW_MEASUREMENT.value, MeasurementOrigin.PROCESSED_MEASUREMENT.value}
+    if relationship_value == RelationshipType.MEASURED_ON.value and origin_value not in measurement_origins:
+        return False, "MEASURED_ON is reserved for direct/processed measurement-origin data with appropriate physical measurement evidence."
+    if origin_value == MeasurementOrigin.CATALOG_RECORD.value and relationship_value == RelationshipType.MEASURED_ON.value:
+        return False, "A catalog record without direct measurement evidence cannot be labelled MEASURED_ON."
+    if origin_value in {MeasurementOrigin.SIMULATION_RESULT.value, MeasurementOrigin.PREDICTED_VALUE.value} and relationship_value not in {
+        RelationshipType.PREDICTED_FOR.value,
+        RelationshipType.CHARACTERIZES.value,
+        RelationshipType.REFERENCES.value,
+        RelationshipType.UNKNOWN.value,
+    }:
+        return False, "Simulation/prediction data should use PREDICTED_FOR, CHARACTERIZES, REFERENCES, or remain explicitly unknown pending review."
+    return True, "Relationship type is compatible with the declared dataset-origin classification at the prototype rule level."
+
+
 def relationship_strength_statement(relationship: GeometryMeasurementRelationship) -> str:
     """Return a transparent qualitative statement; never a pseudo-scientific confidence score."""
     summary = relationship.evidence_summary()
@@ -229,6 +270,8 @@ def relationship_strength_statement(relationship: GeometryMeasurementRelationshi
         return "Transfer-by-equivalence claim; applicability depends on the recorded matching attributes and exclusions."
     if relationship.relationship_type == RelationshipType.PREDICTED_FOR:
         return "Prediction claim; this is not equivalent to a physical measurement on the IFC component."
+    if relationship.relationship_type == RelationshipType.REFERENCES:
+        return "Reference relationship; the source may inform the component but is not asserted as a direct measurement."
     if not relationship.evidence:
         return "Relationship claim has no structured evidence yet."
     return "Relationship strength is described by the recorded evidence items; no numerical confidence score is asserted."
