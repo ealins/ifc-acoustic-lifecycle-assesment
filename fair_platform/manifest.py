@@ -1,98 +1,113 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from typing import Any
 
 from .models import FairAcousticPackage
 
 
+def _media_type(package: FairAcousticPackage, path: str) -> str:
+    record = next((item for item in package.asset_records if item.get("path") == path), None)
+    if record and record.get("media_type"):
+        return str(record["media_type"])
+    if path == package.geometry_reference:
+        return "application/x-step"
+    if path == package.measurement_reference:
+        return str(package.metadata.get("measurement_media_type") or "application/octet-stream")
+    if path.endswith(".ttl"):
+        return "text/turtle"
+    if path.endswith(".json"):
+        return "application/json"
+    if path.endswith(".txt"):
+        return "text/plain"
+    return "application/octet-stream"
+
+
 def build_manifest(package: FairAcousticPackage) -> dict[str, Any]:
-    def resource(path: str, media_type: str, **extra) -> dict[str, Any]:
-        payload = package.assets.get(path, b"")
-        return {
+    asset_index: dict[str, Any] = {}
+    records = {item.get("path"): item for item in package.asset_records if item.get("path")}
+    for path, payload in sorted(package.assets.items()):
+        record = records.get(path, {})
+        asset_index[path] = {
             "path": path,
-            "media_type": media_type,
+            "asset_id": record.get("asset_id") or f"asset:{path}",
+            "role": record.get("role") or (
+                "ifc-model" if path == package.geometry_reference
+                else "primary-acoustic-dataset" if path == package.measurement_reference
+                else "portable-metadata" if path == "ro-crate-metadata.json"
+                else "domain-rdf" if path == package.metadata_reference
+                else "application-manifest" if path == "manifest.json"
+                else "assessment-report" if path.startswith("reports/")
+                else "checksum-report" if path.startswith("checksums/")
+                else "research-object-resource"
+            ),
+            "media_type": _media_type(package, path),
             "size_bytes": len(payload),
             "checksum": package.checksums.get(path),
-            **extra,
+            "original_filename": record.get("original_filename") or record.get("source_filename"),
+            "version": record.get("version"),
+            "packaged": True,
         }
 
-    def supplementary(records: list[dict] | None) -> list[dict[str, Any]]:
-        result: list[dict[str, Any]] = []
-        for record in records or []:
-            path = str(record.get("path", ""))
-            result.append(
-                resource(
-                    path,
-                    str(record.get("media_type") or "application/octet-stream"),
-                    source_filename=record.get("source_filename"),
-                    role=record.get("role"),
-                )
-            )
-        return result
-
     return {
-        "schema": "https://example.org/fair-acoustic/manifest/v2",
+        "schema": "https://example.org/fair-acoustic/manifest/v3",
+        "object_type": package.object_type,
+        "profile": package.research_object_profile,
+        "metadata_authority": {
+            "in_memory_domain_model": "authoritative application state",
+            "ro-crate-metadata.json": "principal portable research-object representation",
+            package.metadata_reference: "domain-specific RDF relationships, provenance and stewardship representation",
+            "manifest.json": "simplified application/compatibility manifest derived from the in-memory model",
+        },
         "package_id": package.package_id,
-        "identifier": package.identifier,
+        "identifier": package.identifier or None,
         "title": package.title,
         "creator": package.creator,
         "created": package.created,
+        "modified": package.modified,
         "version": package.version,
         "license": package.license,
+        "access": package.access_context,
         "resources": {
-            "geometry": resource(
-                package.geometry_reference,
-                "application/x-step",
-                ifc_global_id=package.ifc_global_id,
-                source_filename=package.metadata.get("source_geometry_filename"),
-            ),
-            "measurement": resource(
-                package.measurement_reference,
-                package.metadata.get("measurement_media_type", "application/octet-stream"),
-                dataset_uri=package.dataset_uri,
-                measurement_identifier=package.metadata.get("measurement_identifier"),
-                source_filename=package.metadata.get("source_measurement_filename"),
-                inspection=package.metadata.get("measurement_inspection"),
-            ),
-            "metadata": resource(package.metadata_reference, "text/turtle"),
+            "geometry": asset_index.get(package.geometry_reference, {}),
+            "measurement": {
+                **asset_index.get(package.measurement_reference, {}),
+                "dataset_uri": package.dataset_uri,
+                "measurement_identifier": package.metadata.get("measurement_identifier"),
+                "origin_classification": (package.metadata.get("measurement_inspection") or {}).get("origin_classification"),
+                "inspection": package.metadata.get("measurement_inspection"),
+            },
+            "ro_crate_metadata": asset_index.get("ro-crate-metadata.json", {}),
+            "domain_rdf": asset_index.get(package.metadata_reference, {}),
         },
-        "research": {
-            "context": package.research_context,
-            "resources": supplementary(package.metadata.get("research_resources")),
+        "asset_index": asset_index,
+        "relationships": package.relationships,
+        "research": {"context": package.research_context},
+        "simulation": {"context": package.simulation_context},
+        "fair_support": {
+            "status": package.fair_support_status,
+            "assessment": package.fair_support_assessment,
+            "scope_note": "Selected prototype FAIR-support indicators; not a formal FAIR certification.",
         },
-        "simulation": {
-            "context": package.simulation_context,
-            "resources": supplementary(package.metadata.get("simulation_resources")),
-        },
-        "reproducibility": {
-            "software": package.simulation_context.get("software"),
-            "software_version": package.simulation_context.get("software_version"),
-            "numerical_method": package.simulation_context.get("numerical_method"),
-            "code_repository": package.research_context.get("code_repository"),
-            "code_commit": package.research_context.get("code_commit"),
-            "computational_environment": package.simulation_context.get("computational_environment"),
-            "random_seed": package.research_context.get("random_seed"),
-            "validation_method": package.research_context.get("validation_method"),
-        },
-        "fair": {
+        "legacy_fair_compatibility": {
             "status": package.fair_status.value,
-            "score": package.fair_assessment.get("score"),
-            "findable": package.findable,
-            "accessible": package.accessible,
-            "interoperable": package.interoperable,
-            "reusable": package.reusable,
             "assessment": package.fair_assessment,
-        },
-        "validation": {
-            "shacl": package.metadata.get("shacl_validation", {}),
         },
         "stewardship": {
             "mapping_series": package.mapping_series_uri,
             "latest_assertion": package.latest_mapping_assertion_uri,
-            "lifecycle_status": package.lifecycle_display_status,
-            "engine_status": package.lifecycle_status,
+            "lifecycle_status": package.lifecycle_status,
             "revision_count": len(package.stewardship_history),
+            "reassessment_triggers": package.reassessment_triggers,
+        },
+        "scientific_suitability": {
+            "status": package.scientific_suitability_status,
+            "scope_note": "Acoustic scientific validity/suitability is not inferred from FAIR or lifecycle metadata.",
+        },
+        "validation": {
+            "package": package.validation_report,
+            "shacl": package.metadata.get("shacl_validation", {}),
         },
         "checksums": package.checksums,
     }
