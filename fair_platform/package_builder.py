@@ -5,6 +5,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from .export import finalize_package
+from .measurement import inspect_measurement
 from .models import FairAcousticPackage
 
 
@@ -39,12 +40,14 @@ class FairPackageBuilder:
         measurement_suffix = Path(measurement_filename).suffix.lower() or ".bin"
         measurement_reference = f"measurement{measurement_suffix}"
         media_type = mimetypes.guess_type(measurement_filename)[0] or "application/octet-stream"
+        inspection = inspect_measurement(measurement_filename, bytes(measurement_bytes))
 
         package_metadata = dict(metadata or {})
         package_metadata.update({
             "source_geometry_filename": geometry_filename,
             "source_measurement_filename": measurement_filename,
             "measurement_media_type": media_type,
+            "measurement_inspection": inspection,
         })
 
         package = FairAcousticPackage(
