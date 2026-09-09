@@ -55,19 +55,19 @@ _TRIGGER_RULES: dict[str, tuple[str, TriggerCategory, TriggerSeverity, Lifecycle
         "The semantic/type basis for the component-dataset claim changed.",
     ),
     "measurement_checksum": (
-        "Acoustic dataset checksum changed", TriggerCategory.MEASUREMENT_CONTENT, TriggerSeverity.MATERIAL,
+        "Measurement content checksum changed", TriggerCategory.MEASUREMENT_CONTENT, TriggerSeverity.MATERIAL,
         LifecycleStewardshipState.SEMANTICALLY_STALE,
         "Inspect the new acoustic data version and re-approve relationship evidence that depends on content.",
         "Acoustic source content changed from the version used by the relationship decision.",
     ),
     "measurement_version": (
-        "Acoustic dataset version changed", TriggerCategory.MEASUREMENT_CONTENT, TriggerSeverity.REVIEW,
+        "Measurement version changed", TriggerCategory.MEASUREMENT_CONTENT, TriggerSeverity.REVIEW,
         LifecycleStewardshipState.MANUAL_REVIEW,
         "Review changes between dataset versions and record a stewardship decision.",
         "The dataset version baseline no longer matches the previous relationship review.",
     ),
     "measurement_uri": (
-        "Acoustic dataset URI changed", TriggerCategory.RELATIONSHIP_TARGET, TriggerSeverity.MATERIAL,
+        "Measurement URI changed", TriggerCategory.RELATIONSHIP_TARGET, TriggerSeverity.MATERIAL,
         LifecycleStewardshipState.MANUAL_REVIEW,
         "Verify that the new URI identifies the intended dataset rather than a different relationship target.",
         "External relationship target/reference changed.",
