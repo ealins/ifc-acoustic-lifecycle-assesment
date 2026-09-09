@@ -39,6 +39,7 @@ def build_manifest(package: FairAcousticPackage) -> dict[str, Any]:
                 dataset_uri=package.dataset_uri,
                 measurement_identifier=package.metadata.get("measurement_identifier"),
                 source_filename=package.metadata.get("source_measurement_filename"),
+                inspection=package.metadata.get("measurement_inspection"),
             ),
             "metadata": resource(package.metadata_reference, "text/turtle"),
         },
@@ -50,6 +51,9 @@ def build_manifest(package: FairAcousticPackage) -> dict[str, Any]:
             "interoperable": package.interoperable,
             "reusable": package.reusable,
             "assessment": package.fair_assessment,
+        },
+        "validation": {
+            "shacl": package.metadata.get("shacl_validation", {}),
         },
         "stewardship": {
             "mapping_series": package.mapping_series_uri,

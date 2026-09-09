@@ -8,6 +8,7 @@ from .models import FairAcousticPackage
 
 FAIRAC = Namespace("https://example.org/fair-acoustic/vocab/")
 DCAT = Namespace("http://www.w3.org/ns/dcat#")
+SH = Namespace("http://www.w3.org/ns/shacl#")
 
 
 def _term(name: str) -> str:
@@ -25,6 +26,7 @@ def build_metadata_graph(package: FairAcousticPackage) -> Graph:
     graph.bind("dct", DCTERMS)
     graph.bind("prov", PROV)
     graph.bind("dcat", DCAT)
+    graph.bind("sh", SH)
 
     package_uri = _uri(package.identifier, f"https://example.org/fair-acoustic/package/{package.package_id}")
     geometry_uri = URIRef(f"{package_uri}#geometry")
@@ -46,6 +48,12 @@ def build_metadata_graph(package: FairAcousticPackage) -> Graph:
     graph.add((package_uri, FAIRAC.accessible, Literal(package.accessible, datatype=XSD.boolean)))
     graph.add((package_uri, FAIRAC.interoperable, Literal(package.interoperable, datatype=XSD.boolean)))
     graph.add((package_uri, FAIRAC.reusable, Literal(package.reusable, datatype=XSD.boolean)))
+
+    shacl = package.metadata.get("shacl_validation") or {}
+    if shacl:
+        graph.add((package_uri, FAIRAC.shaclValidationAvailable, Literal(bool(shacl.get("available")), datatype=XSD.boolean)))
+        graph.add((package_uri, FAIRAC.shaclConforms, Literal(bool(shacl.get("conforms")), datatype=XSD.boolean)))
+        graph.add((package_uri, FAIRAC.shaclViolationCount, Literal(int(shacl.get("violation_count", 0)), datatype=XSD.integer)))
 
     if package.metadata.get("description"):
         graph.add((package_uri, DCTERMS.description, Literal(package.metadata["description"])))
@@ -69,12 +77,17 @@ def build_metadata_graph(package: FairAcousticPackage) -> Graph:
     graph.add((geometry_uri, DCTERMS.identifier, Literal(package.geometry_reference)))
     if package.ifc_global_id:
         graph.add((geometry_uri, FAIRAC.ifcGlobalId, Literal(package.ifc_global_id)))
-    for key in ("geometry_ifc_class", "geometry_name", "geometry_construction_family", "geometry_total_thickness_m"):
+    for key in ("geometry_ifc_class", "geometry_name", "geometry_construction_family", "geometry_total_thickness_m", "geometry_semantic_classification"):
         value = package.metadata.get(key)
         if value not in (None, "", []):
             graph.add((geometry_uri, FAIRAC[_term(key)], Literal(str(value))))
     for material in package.metadata.get("geometry_materials", []) or []:
         graph.add((geometry_uri, FAIRAC.material, Literal(str(material))))
+    spatial = package.metadata.get("geometry_spatial_context") or {}
+    if isinstance(spatial, dict):
+        for key, value in spatial.items():
+            if value not in (None, "", []):
+                graph.add((geometry_uri, FAIRAC[_term(f"spatial_{key}")], Literal(str(value))))
 
     graph.add((measurement_uri, RDF.type, FAIRAC.MeasurementDataset))
     graph.add((measurement_uri, RDF.type, DCAT.Dataset))
@@ -82,6 +95,14 @@ def build_metadata_graph(package: FairAcousticPackage) -> Graph:
     graph.add((measurement_uri, DCTERMS.format, Literal(package.metadata.get("measurement_media_type", "application/octet-stream"))))
     graph.add((package_uri, PROV.wasDerivedFrom, geometry_uri))
     graph.add((package_uri, PROV.wasDerivedFrom, measurement_uri))
+
+    inspection = package.metadata.get("measurement_inspection") or {}
+    if inspection:
+        graph.add((measurement_uri, FAIRAC.inspectionValid, Literal(bool(inspection.get("valid")), datatype=XSD.boolean)))
+        graph.add((measurement_uri, FAIRAC.inspectedFormat, Literal(str(inspection.get("format", "")))))
+        graph.add((measurement_uri, FAIRAC.inspectionSummary, Literal(str(inspection.get("summary", "")))))
+        for signal in inspection.get("semantic_signals", []) or []:
+            graph.add((measurement_uri, FAIRAC.detectedSignal, Literal(str(signal))))
 
     for key, value in package.measurement_context.items():
         if value not in (None, "", []):

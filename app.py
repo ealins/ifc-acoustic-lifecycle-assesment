@@ -1,4 +1,4 @@
 """Canonical entrypoint for the FAIR Acoustic Component Platform."""
-from dashboard.ui.platform_app import run_platform_app
+from dashboard.ui.enhanced_app import run_enhanced_app
 
-run_platform_app()
+run_enhanced_app()

@@ -2,7 +2,7 @@ name: tests
 
 on:
   push:
-    branches: [main, feature/fair-acoustic-platform]
+    branches: [main, feature/fair-acoustic-platform, fix/visible-fair-capabilities]
   pull_request:
     branches: [main]
 
@@ -19,8 +19,8 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt pytest
       - name: Compile modules
-        run: python -m compileall -q fair_platform dashboard app.py
-      - name: Run tests
+        run: python -m compileall -q fair_platform dashboard app.py flask_app.py
+      - name: Run full test suite
         env:
           PYTHONPATH: ${{ github.workspace }}
-        run: python -m pytest -q tests
+        run: python -m pytest -q
