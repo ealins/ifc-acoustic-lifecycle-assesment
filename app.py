@@ -1,4 +1,6 @@
-"""Canonical entrypoint for the FAIR Acoustic Component Platform."""
-from dashboard.ui.research_enhanced_app import run_research_enhanced_app
+"""Canonical entrypoint for the IFC-linked vibrometry thesis demonstrator."""
 
-run_research_enhanced_app()
+from dashboard.ui.vibrometry_thesis_app import run_vibrometry_thesis_app
+
+
+run_vibrometry_thesis_app()

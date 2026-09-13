@@ -10,9 +10,9 @@ headless = true
 port = 8501
 
 [theme]
-base = "light"
-primaryColor = "#0F766E"
-backgroundColor = "#F7F9FC"
-secondaryBackgroundColor = "#FFFFFF"
-textColor = "#172033"
+base = "dark"
+primaryColor = "#62D6C8"
+backgroundColor = "#08131F"
+secondaryBackgroundColor = "#10243A"
+textColor = "#E8F0FA"
 font = "sans serif"
