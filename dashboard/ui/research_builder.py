@@ -23,7 +23,7 @@ from fair_platform.research_object import (
     relationship_type_allowed_for_origin,
 )
 from fair_platform.stewardship import FairStewardshipService
-from fair_platform.vibrometry_sidecar import build_sidecar, validate_sidecar
+from fair_platform.vibrometry_sidecar import build_sidecar, validate_sidecar, validate_shacl
 
 
 ACOUSTIC_PROFILE_OPTIONS = {
@@ -647,22 +647,58 @@ def render_research_builder() -> None:
         # The thesis workflow has three authoritative inputs: source measurement,
         # laboratory context, and IFC context.  No HDF5 derivative is created.
         if measurement_file:
+            lab_profile_context = {
+                "method": measurement_context.get("measurement_method") or "unknown",
+                "instrument": measurement_context.get("instrument_model") or measurement_context.get("instrument") or "unknown",
+                "operator": measurement_context.get("operator") or "unknown",
+                "measurementDate": measurement_context.get("measurement_date") or "unknown",
+                "calibrationStatus": measurement_context.get("calibration_reference") or "unknown",
+                "scanSetup": "; ".join(
+                    value for value in (
+                        measurement_context.get("instrument_configuration"),
+                        measurement_context.get("excitation_method"),
+                        measurement_context.get("source_receiver_configuration"),
+                        measurement_context.get("sampling_information"),
+                        measurement_context.get("measurement_points"),
+                    ) if value
+                ) or "unknown",
+                "measuredQuantity": measurement_context.get("measured_quantity") or "unknown",
+                "unit": measurement_context.get("unit") or "unknown",
+                "processingDescription": "; ".join(
+                    value for value in (
+                        measurement_context.get("processing_software"),
+                        measurement_context.get("processing_steps"),
+                    ) if value
+                ) or "unknown",
+                "limitations": quality_information.get("limitations") or "unknown",
+            }
+            ifc_profile_context = {
+                **geometry,
+                "source_file": ifc_file.name,
+                "source_sha256": geometry.get("source_sha256") or _sha256(ifc_file.getvalue()),
+            }
             sidecar = build_sidecar(
                 measurement_file.name,
                 measurement_file.getvalue(),
-                measurement_context,
-                geometry,
+                lab_profile_context,
+                ifc_profile_context,
                 record_id=measurement_identifier,
             )
             cross_layer_issues = validate_sidecar(
                 sidecar,
                 measurement_file.getvalue(),
                 ifc_file.getvalue(),
-                {"resolved": True, "global_id": geometry.get("global_id"), "ifc_class": geometry.get("ifc_class")},
+                {"resolved": bool(geometry.get("global_id")), "global_id": geometry.get("global_id"), "ifc_class": geometry.get("ifc_class")},
             )
+            shacl_result = validate_shacl(sidecar)
+            validation_report = {
+                "valid": not cross_layer_issues and shacl_result["conforms"],
+                "cross_layer": {"valid": not cross_layer_issues, "issues": cross_layer_issues},
+                "shacl": shacl_result,
+            }
             package.assets["metadata/vibrometry-sidecar.jsonld"] = json.dumps(sidecar, indent=2).encode("utf-8")
             package.assets["reports/vibrometry-cross-layer-validation.json"] = json.dumps(
-                {"valid": not cross_layer_issues, "issues": cross_layer_issues}, indent=2
+                validation_report, indent=2
             ).encode("utf-8")
             package.metadata["vibrometry_sidecar"] = "metadata/vibrometry-sidecar.jsonld"
         try:
