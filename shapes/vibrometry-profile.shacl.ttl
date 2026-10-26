@@ -7,7 +7,7 @@
 
 vibro:MeasurementRecordShape a sh:NodeShape ;
   sh:targetClass vibro:VibrometryMeasurementRecord ;
-  sh:property [ sh:path dct:conformsTo ; sh:hasValue <https://w3id.org/vibro-ifc/profile/0.1> ] ;
+  sh:property [ sh:path dct:conformsTo ; sh:hasValue "https://w3id.org/vibro-ifc/profile/0.1" ] ;
   sh:property [ sh:path vibro:profileVersion ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] ;
   sh:property [ sh:path vibro:recordIdentifier ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] ;
   sh:property [ sh:path vibro:measurementPayload ; sh:minCount 1 ; sh:maxCount 1 ; sh:node vibro:MeasurementPayloadShape ] ;
