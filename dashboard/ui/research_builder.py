@@ -23,6 +23,7 @@ from fair_platform.research_object import (
     relationship_type_allowed_for_origin,
 )
 from fair_platform.stewardship import FairStewardshipService
+from fair_platform.vibrometry_sidecar import build_sidecar, validate_sidecar
 
 
 ACOUSTIC_PROFILE_OPTIONS = {
@@ -228,7 +229,7 @@ def render_research_builder() -> None:
         if mode == "Upload local acoustic file":
             measurement_file = st.file_uploader(
                 "Upload primary acoustic data",
-                type=["xml", "csv", "json", "txt", "dat", "h5", "hdf5", "vtk", "vtu", "xdmf", "ttl", "rdf", "msh", "med", "res", "out", "log"],
+                type=["csv", "txt"],
                 key="ro_measurement",
             )
             _measurement_preview(measurement_file)
@@ -250,7 +251,7 @@ def render_research_builder() -> None:
         measured_quantity = st.text_input("Measured / reported quantity")
         unit = st.text_input("Units")
         frequency_range = st.text_input("Frequency range / resolution", placeholder="When applicable")
-        data_structure = st.text_input("Data schema / structure", placeholder="VaBDat XML, CSV table, HDF5 schema...")
+        data_structure = st.text_input("Data schema / structure", placeholder="CSV columns or TXT row format")
         related_report = st.text_input("Source report / related document")
         source_record_identifier = st.text_input("Source record identifier")
 
@@ -643,6 +644,27 @@ def render_research_builder() -> None:
             metadata=metadata,
             research_object_layout=True,
         )
+        # The thesis workflow has three authoritative inputs: source measurement,
+        # laboratory context, and IFC context.  No HDF5 derivative is created.
+        if measurement_file:
+            sidecar = build_sidecar(
+                measurement_file.name,
+                measurement_file.getvalue(),
+                measurement_context,
+                geometry,
+                record_id=measurement_identifier,
+            )
+            cross_layer_issues = validate_sidecar(
+                sidecar,
+                measurement_file.getvalue(),
+                ifc_file.getvalue(),
+                {"resolved": True, "global_id": geometry.get("global_id"), "ifc_class": geometry.get("ifc_class")},
+            )
+            package.assets["metadata/vibrometry-sidecar.jsonld"] = json.dumps(sidecar, indent=2).encode("utf-8")
+            package.assets["reports/vibrometry-cross-layer-validation.json"] = json.dumps(
+                {"valid": not cross_layer_issues, "issues": cross_layer_issues}, indent=2
+            ).encode("utf-8")
+            package.metadata["vibrometry_sidecar"] = "metadata/vibrometry-sidecar.jsonld"
         try:
             outcome = FairStewardshipService().assess(package)
             lifecycle_note = f"Lifecycle assessment: {outcome.status}"

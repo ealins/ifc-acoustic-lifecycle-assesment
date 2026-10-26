@@ -101,7 +101,7 @@ def _sidebar() -> str:
         selected = st.radio("Workspace", NAV_ITEMS, label_visibility="collapsed", key="thesis_workspace")
         st.divider()
         st.markdown("**Design premise**")
-        st.caption("Large arrays remain in HDF5. IFC stores component context and a document pointer—not scan values.")
+        st.caption("The original TXT/CSV measurement payload is retained. IFC stores component context and a document pointer—not scan values.")
         st.divider()
         st.markdown("**Open inspection**")
         st.caption("HDFView · Bonsai / BlenderBIM · Browser · Python verification")
@@ -114,7 +114,7 @@ def _page_intro(title: str, description: str, section: str) -> None:
         """
         <div class="thesis-strip">
           <span class="thesis-tag">SLDV / vibrometry</span>
-          <span class="thesis-tag">HDF5 numerical core</span>
+          <span class="thesis-tag">TXT / CSV measurement payload</span>
           <span class="thesis-tag">JSON-LD semantics</span>
           <span class="thesis-tag">IFC component context</span>
           <span class="thesis-tag">FAIR-oriented packaging</span>
@@ -164,7 +164,7 @@ def render_overview() -> None:
         _html_card(
             "research-note",
             "Thesis contribution",
-            "<p>The workflow joins a canonical HDF5 structure, semantic JSON-LD metadata, a precise IFC component reference, validation evidence, and a portable package envelope—without changing the IFC schema or creating a custom viewer.</p>",
+            "<p>The workflow joins an unchanged TXT/CSV measurement payload, laboratory context, semantic JSON-LD metadata, a precise IFC component reference, validation evidence, and a portable package envelope—without changing the IFC schema or creating a custom viewer.</p>",
         )
 
     st.markdown("### Three-layer package architecture")
@@ -172,8 +172,8 @@ def render_overview() -> None:
     with numerical:
         _html_card(
             "architecture-card",
-            "01 · Numerical core",
-            "<div class='architecture-step'>HDF5 arrays</div><p>Coordinates, frequency axes, velocity spectra, transfer functions, coherence and related data remain in a scalable binary container with chunking, compression and dimension scales.</p><p><code>/geometry/coordinates</code><br><code>/axes/frequency</code><br><code>/measurements/velocity</code></p>",
+            "01 · Measurement payload",
+            "<div class='architecture-step'>TXT / CSV source</div><p>The original exported measurement file remains authoritative. The package records its hash, parser context, columns and any declared point-specific evidence without converting it to another numerical container.</p><p><code>measurements/scan.csv</code><br><code>measurements/scan.txt</code></p>",
         )
     with semantic:
         _html_card(
@@ -185,14 +185,14 @@ def render_overview() -> None:
         _html_card(
             "architecture-card",
             "03 · Portable package",
-            "<div class='architecture-step'>Research-object envelope</div><p>HDF5, source exports, IFC model, manifest, validation report, README and licence form one documented package. RO-Crate-style metadata supports portable inspection.</p><p><code>data/</code> <code>metadata/</code><br><code>ifc/</code> <code>validation/</code></p>",
+            "<div class='architecture-step'>Research-object envelope</div><p>The source measurement payload, IFC model, JSON-LD sidecar, manifest, validation report, README and licence form one documented package. RO-Crate-style metadata supports portable inspection.</p><p><code>measurements/</code> <code>metadata/</code><br><code>geometry/</code> <code>reports/</code></p>",
         )
 
     st.markdown("### Demonstrator flow")
     flow_cols = st.columns([1, .14, 1, .14, 1, .14, 1])
     flow_cols[0].markdown("**Raw export**<br><span class='metric-caption'>CSV · UFF/UNV · vendor formats</span>", unsafe_allow_html=True)
     flow_cols[1].markdown("<div class='flow-line'>→</div>", unsafe_allow_html=True)
-    flow_cols[2].markdown("**Transform**<br><span class='metric-caption'>Python · HDF5 schema · metadata extraction</span>", unsafe_allow_html=True)
+    flow_cols[2].markdown("**Describe**<br><span class='metric-caption'>Python · lab context · JSON-LD sidecar</span>", unsafe_allow_html=True)
     flow_cols[3].markdown("<div class='flow-line'>→</div>", unsafe_allow_html=True)
     flow_cols[4].markdown("**Associate**<br><span class='metric-caption'>IFC GlobalId · checksum · document reference</span>", unsafe_allow_html=True)
     flow_cols[5].markdown("<div class='flow-line'>→</div>", unsafe_allow_html=True)
@@ -205,29 +205,16 @@ def render_overview() -> None:
 
 def render_data_architecture() -> None:
     _page_intro(
-        "Canonical HDF5 data structure",
-        "A vendor-neutral numerical core optimised for spatial scan fields, spectra and selective access—not a text dump of high-volume values.",
-        "Layer 01 · numerical data",
+        "Three authoritative inputs",
+        "The workflow preserves the original measurement payload and automatically connects it to laboratory and IFC context.",
+        "Layer 01 · source evidence",
     )
     st.markdown("### Proposed hierarchy")
     st.code(
-        """vibrometry_measurement.h5
-├── /geometry
-│   ├── coordinates              # [scan_point, xyz] in declared scan CRS
-│   ├── point_id                 # scan-point identifiers
-│   └── scan_coordinate_system   # attributes: origin, axes, orientation
-├── /axes
-│   ├── frequency                # [frequency] Hz, dimension scale
-│   └── time                     # optional [time] s, dimension scale
-├── /measurements
-│   ├── velocity                 # [scan_point, frequency], e.g. m/s
-│   ├── transfer_function        # [scan_point, frequency], complex values
-│   └── coherence                # [scan_point, frequency], dimensionless
-├── /derived
-│   ├── operational_deflection_shape
-│   └── mobility
-└── /provenance
-    └── source_selection          # source asset, row/column/slice references""",
+        """measurements/scan.csv or scan.txt   # original measurement payload
+metadata/vibrometry-sidecar.jsonld  # laboratory + IFC + payload metadata
+geometry/source-model.ifc           # authoritative IFC context
+reports/vibrometry-cross-layer-validation.json""",
         language="text",
     )
     c1, c2, c3 = st.columns(3)

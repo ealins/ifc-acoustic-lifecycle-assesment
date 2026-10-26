@@ -7,7 +7,7 @@ from rdflib import Graph
 
 from .models import FairAcousticPackage, FairAssessmentResult, FairCriterionResult, FairDimensionResult, FairStatus
 
-STANDARD_MEASUREMENT_EXTENSIONS = {".xml", ".csv", ".json", ".txt", ".dat", ".h5", ".hdf5", ".vtk", ".ttl", ".rdf"}
+STANDARD_MEASUREMENT_EXTENSIONS = {".xml", ".csv", ".json", ".txt", ".dat", ".vtk", ".ttl", ".rdf"}
 
 
 def _has_text(value) -> bool:
