@@ -1,0 +1,40 @@
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix dct: <http://purl.org/dc/terms/> .
+@prefix vibro: <https://w3id.org/vibro-ifc/vocab/> .
+
+# Profile 0.1.0. Unknown facts should be explicit and explained in limitations.
+
+vibro:MeasurementRecordShape a sh:NodeShape ;
+  sh:targetClass vibro:VibrometryMeasurementRecord ;
+  sh:property [ sh:path dct:conformsTo ; sh:hasValue <https://w3id.org/vibro-ifc/profile/0.1> ] ;
+  sh:property [ sh:path vibro:profileVersion ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] ;
+  sh:property [ sh:path vibro:recordIdentifier ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] ;
+  sh:property [ sh:path vibro:measurementPayload ; sh:minCount 1 ; sh:maxCount 1 ; sh:node vibro:MeasurementPayloadShape ] ;
+  sh:property [ sh:path vibro:labContext ; sh:minCount 1 ; sh:maxCount 1 ; sh:node vibro:LabContextShape ] ;
+  sh:property [ sh:path vibro:ifcLinkRecord ; sh:minCount 1 ; sh:maxCount 1 ; sh:node vibro:IfcLinkShape ] .
+
+vibro:MeasurementPayloadShape a sh:NodeShape ;
+  sh:property [ sh:path vibro:fileName ; sh:minCount 1 ; sh:datatype xsd:string ] ;
+  sh:property [ sh:path vibro:mediaType ; sh:minCount 1 ; sh:in ( "text/plain" "text/csv" ) ] ;
+  sh:property [ sh:path vibro:byteSize ; sh:minCount 1 ; sh:datatype xsd:integer ; sh:minInclusive 1 ] ;
+  sh:property [ sh:path vibro:sha256 ; sh:minCount 1 ; sh:pattern "^sha256:[0-9a-f]{64}$" ] .
+
+vibro:LabContextShape a sh:NodeShape ;
+  sh:property [ sh:path vibro:method ; sh:minCount 1 ; sh:datatype xsd:string ] ;
+  sh:property [ sh:path vibro:instrument ; sh:minCount 1 ; sh:datatype xsd:string ] ;
+  sh:property [ sh:path vibro:operator ; sh:minCount 1 ; sh:datatype xsd:string ] ;
+  sh:property [ sh:path vibro:measurementDate ; sh:minCount 1 ; sh:datatype xsd:string ; sh:pattern "^([0-9]{4}-[0-9]{2}-[0-9]{2}|unknown)$" ] ;
+  sh:property [ sh:path vibro:calibrationStatus ; sh:minCount 1 ; sh:datatype xsd:string ] ;
+  sh:property [ sh:path vibro:scanSetup ; sh:minCount 1 ; sh:datatype xsd:string ] ;
+  sh:property [ sh:path vibro:measuredQuantity ; sh:minCount 1 ; sh:datatype xsd:string ] ;
+  sh:property [ sh:path vibro:unit ; sh:minCount 1 ; sh:datatype xsd:string ] ;
+  sh:property [ sh:path vibro:processingDescription ; sh:minCount 1 ; sh:datatype xsd:string ] ;
+  sh:property [ sh:path vibro:limitations ; sh:minCount 1 ; sh:datatype xsd:string ] .
+
+vibro:IfcLinkShape a sh:NodeShape ;
+  sh:property [ sh:path vibro:ifcFileName ; sh:minCount 1 ; sh:datatype xsd:string ] ;
+  sh:property [ sh:path vibro:ifcSha256 ; sh:minCount 1 ; sh:pattern "^sha256:[0-9a-f]{64}$" ] ;
+  sh:property [ sh:path vibro:ifcSchema ; sh:minCount 1 ; sh:datatype xsd:string ] ;
+  sh:property [ sh:path vibro:ifcGlobalId ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ] ;
+  sh:property [ sh:path vibro:ifcEntityType ; sh:minCount 1 ; sh:datatype xsd:string ] .
