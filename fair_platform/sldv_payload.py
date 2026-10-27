@@ -1,6 +1,6 @@
 """Conservative inspection of original SLDV TXT/CSV payloads.
 
-This module borrows the useful file-derived checks from the Library's
+This module adapts the useful file-derived checks from the Library's
 build_scan_record.py without hard-coding its one specimen's 6,381-row,
 20--6,400 Hz axis. It never rewrites or converts the source payload.
 """
@@ -14,8 +14,8 @@ from pathlib import Path
 from typing import Any
 
 _POINT_RE = re.compile(
-    r"Point Index:\\s*(\\d+)\\s*\\[\\s*x\\s*=\\s*([-+0-9.eE]+)"
-    r"\\s*y\\s*=\\s*([-+0-9.eE]+)\\s*z\\s*=\\s*([-+0-9.eE]+)\\s*\\]"
+    r"Point Index:\s*(\d+)\s*\[\s*x\s*=\s*([-+0-9.eE]+)"
+    r"\s*y\s*=\s*([-+0-9.eE]+)\s*z\s*=\s*([-+0-9.eE]+)\s*\]"
 )
 
 
@@ -28,13 +28,7 @@ def _number(value: str) -> float | None:
 
 
 def inspect_sldv_payload(filename: str, payload: bytes) -> dict[str, Any]:
-    """Return derived diagnostics only; never modify the supplied bytes.
-
-    For tab-delimited SLDV TXT, identifies a point header when present and
-    discovers numeric rows after it. For CSV, discovers numeric data rows
-    without assuming a fixed column layout. A frequency axis is reported only
-    when the first field is numeric across the discovered rows.
-    """
+    """Return derived diagnostics only; never modify the supplied bytes."""
     suffix = Path(filename).suffix.lower()
     if suffix not in {".txt", ".csv"}:
         return {
@@ -58,11 +52,10 @@ def inspect_sldv_payload(filename: str, payload: bytes) -> dict[str, Any]:
             }
             break
 
-    delimiter = "," if suffix == ".csv" else "\\t"
     if suffix == ".csv":
         raw_rows = list(csv.reader(io.StringIO(text)))
     else:
-        raw_rows = [line.split("\\t") for line in lines]
+        raw_rows = [line.split("\t") for line in lines]
 
     numeric_rows: list[list[float]] = []
     for row in raw_rows:
