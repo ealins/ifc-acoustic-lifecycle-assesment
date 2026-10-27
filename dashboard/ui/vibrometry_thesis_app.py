@@ -13,6 +13,7 @@ import streamlit as st
 from dashboard.backend.fair_bridge import ensure_state, packages
 from dashboard.ui.fair_dashboard import hero, inject_platform_css
 from dashboard.ui.research_builder import render_research_builder
+from dashboard.ui.live_validation_workbench import render_live_validation_workbench
 from fair_platform.export import export_research_object
 
 
@@ -314,6 +315,9 @@ def render_validation() -> None:
             "- Which source asset and processing activity produced a selected result?\n"
             "- Does the component GlobalId resolve and does the stored model checksum match?"
         )
+
+    st.divider()
+    render_live_validation_workbench()
 
 
 def render_fair_evidence() -> None:
