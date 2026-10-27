@@ -39,3 +39,29 @@ def test_bundle_contains_source_bytes_sidecar_validation_and_viewer():
         assert archive.read("measurements/scan.csv") == original
         assert json.loads(archive.read("metadata/SLDV-001.jsonld"))["sourceProvenance"]["measurement"]["sha256"] == "sha256:abc"
         assert json.loads(archive.read("manifest/index.json"))["indexVersion"] == "1.1"
+
+
+def test_project_package_inspection_normalizes_root_and_counts_artifacts():
+    from dashboard.ui.persistent_thesis_workspace import _inspect_project_package
+
+    out = io.BytesIO()
+    with zipfile.ZipFile(out, "w") as archive:
+        archive.writestr("ldv_project_final/README.md", "# Package")
+        archive.writestr("ldv_project_final/data/scan_01.txt", b"raw\r\n")
+        archive.writestr("ldv_project_final/data/wall.ifc", b"IFC")
+        archive.writestr("ldv_project_final/metadata/points/point_0001.jsonld", b"{}")
+        archive.writestr("ldv_project_final/history/template_v5.jsonld", b"{}")
+        archive.writestr("ldv_project_final/view/view_config_planks_side.json", b"{}")
+        archive.writestr("ldv_project_final/reports/validation_summary.txt", b"Review required")
+        archive.writestr("../unsafe.txt", b"must not be exposed")
+
+    package = _inspect_project_package(out.getvalue())
+    assert package["measurements"] == 1
+    assert package["ifc_files"] == 1
+    assert package["sidecars"] == 1
+    assert package["history"] == 1
+    assert package["views"] == 1
+    assert "README.md" in package["files"]
+    assert "data/scan_01.txt" in package["files"]
+    assert "../unsafe.txt" not in package["files"]
+    assert package["files"]["data/scan_01.txt"] == b"raw\\r\\n"
