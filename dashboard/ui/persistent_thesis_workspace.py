@@ -172,14 +172,184 @@ def _build_report(measurements, metadata_upload, ifc_file, component, viewer_upl
             "component": component, "viewer_json": viewer_upload.getvalue() if viewer_upload else None}
 
 
+
+def _inspect_project_package(payload: bytes) -> dict[str, Any]:
+    """Read the user's existing LDV/IFC package without extracting files to disk."""
+    with zipfile.ZipFile(io.BytesIO(payload)) as archive:
+        entries = {}
+        for info in archive.infolist():
+            if info.is_dir():
+                continue
+            # Ignore unsafe paths and cap individual reads to avoid ZIP path traversal
+            # and unexpectedly huge payloads in a dashboard session.
+            path = Path(info.filename)
+            if path.is_absolute() or ".." in path.parts or info.file_size > 100_000_000:
+                continue
+            entries[info.filename] = archive.read(info)
+    root = "ldv_project_final/"
+    normalized = {name[len(root):] if name.startswith(root) else name: data for name, data in entries.items()}
+    def count(prefix: str, suffixes: tuple[str, ...] | None = None) -> int:
+        return sum(name.startswith(prefix) and (suffixes is None or name.lower().endswith(suffixes)) for name in normalized)
+    return {
+        "files": normalized,
+        "measurements": count("data/", (".txt", ".csv")),
+        "sidecars": count("metadata/points/", (".jsonld",)),
+        "history": count("history/", (".jsonld",)),
+        "views": count("view/", (".json",)),
+        "ifc_files": count("data/", (".ifc",)),
+    }
+
+
+def _render_project_package(package: dict[str, Any]) -> None:
+    """Browse the supplied final project archive and its real evidence."""
+    files = package["files"]
+    st.success("Existing LDV/IFC project package loaded. These are the artifacts from your ZIP; source files are not regenerated.")
+    metrics = st.columns(5)
+    metrics[0].metric("Measurement files", package["measurements"])
+    metrics[1].metric("Point sidecars", package["sidecars"])
+    metrics[2].metric("Template history", package["history"])
+    metrics[3].metric("Blender configs", package["views"])
+    metrics[4].metric("IFC models", package["ifc_files"])
+
+    tabs = st.tabs(["Package overview", "Measurements", "Template & provenance", "Blender / IFC", "Validation", "All files"])
+    with tabs[0]:
+        readme = next((data for name, data in files.items() if name.lower().endswith("readme.md")), None)
+        if readme:
+            st.markdown(readme.decode("utf-8", errors="replace"))
+        st.write("Package file counts", {
+            "all files": len(files), "measurements": package["measurements"],
+            "point JSON-LD": package["sidecars"], "template history": package["history"],
+            "view configurations": package["views"],
+        })
+        index = files.get("metadata/scan_index.jsonld")
+        if index:
+            st.subheader("Scan index")
+            try:
+                st.json(json.loads(index.decode("utf-8-sig")), expanded=2)
+            except Exception as exc:
+                st.warning(f"Index could not be parsed as JSON: {exc}")
+        if "reports/scan_vs_ifc_hypotheses.png" in files:
+            st.image(files["reports/scan_vs_ifc_hypotheses.png"], caption="Scan-to-IFC hypotheses — inspect as hypotheses, not verified registration.")
+    with tabs[1]:
+        measurement_names = sorted(n for n in files if n.startswith("data/") and n.lower().endswith((".txt", ".csv")))
+        if measurement_names:
+            selected = st.selectbox("Choose original measurement", measurement_names, key="project_zip_measurement")
+            raw = files[selected]
+            st.write({"file": selected, "bytes": len(raw), "sha256": sha256_uri(raw)})
+            st.download_button("Download original measurement unchanged", raw, Path(selected).name, "text/plain" if selected.lower().endswith(".txt") else "text/csv", key="project_zip_measurement_download")
+            preview, plot, note = _read_signal_preview(Path(selected).name, raw)
+            if preview is not None:
+                st.dataframe(preview, use_container_width=True, hide_index=True)
+            if plot is not None and not plot.empty:
+                st.line_chart(plot, x="sample_index", y="value", color="signal")
+            st.caption(note or "Preview only; downloaded bytes remain unchanged.")
+        else:
+            st.warning("No TXT/CSV measurements found under data/.")
+    with tabs[2]:
+        template_names = [n for n in files if n == "metadata/template_sidecar.jsonld" or n.startswith("history/") and n.endswith(".jsonld")]
+        other_prov = [n for n in files if "template_provenance" in n.lower()]
+        choices = sorted(template_names + other_prov)
+        if choices:
+            selected = st.selectbox("Template / provenance artifact", choices, key="project_zip_template")
+            raw = files[selected]
+            if selected.lower().endswith((".json", ".jsonld")):
+                try:
+                    st.json(json.loads(raw.decode("utf-8-sig")), expanded=3)
+                except Exception:
+                    st.code(raw.decode("utf-8", errors="replace"))
+            elif selected.lower().endswith(".csv"):
+                try:
+                    st.dataframe(pd.read_csv(io.BytesIO(raw)), use_container_width=True, hide_index=True)
+                except Exception:
+                    st.code(raw.decode("utf-8", errors="replace"))
+            else:
+                st.markdown(raw.decode("utf-8", errors="replace"))
+            st.download_button("Download selected artifact unchanged", raw, Path(selected).name, key="project_zip_template_download")
+        else:
+            st.warning("No template or provenance artifacts were found.")
+        lab_forms = [n for n in files if n.startswith("sources/") and n.lower().endswith(".docx")]
+        if lab_forms:
+            st.caption("Lab/source documents included: " + ", ".join(Path(n).name for n in lab_forms))
+            for name in lab_forms:
+                st.download_button(f"Download {Path(name).name}", files[name], Path(name).name, key="project_zip_source_" + str(lab_forms.index(name)))
+    with tabs[3]:
+        configs = sorted(n for n in files if n.startswith("view/") and n.lower().endswith(".json"))
+        if configs:
+            selected = st.selectbox("Blender view configuration", configs, key="project_zip_view")
+            raw = files[selected]
+            try:
+                st.json(json.loads(raw.decode("utf-8-sig")), expanded=3)
+            except Exception as exc:
+                st.warning(f"Configuration could not be parsed as JSON: {exc}")
+                st.code(raw.decode("utf-8", errors="replace"))
+            st.download_button("Download view configuration unchanged", raw, Path(selected).name, "application/json", key="project_zip_view_download")
+        if "metadata/view_hypothesis.json" in files:
+            st.subheader("Coordinate / registration hypothesis")
+            try:
+                st.json(json.loads(files["metadata/view_hypothesis.json"].decode("utf-8-sig")))
+            except Exception:
+                st.code(files["metadata/view_hypothesis.json"].decode("utf-8", errors="replace"))
+        if "view/scan_on_wall.png" in files:
+            st.image(files["view/scan_on_wall.png"], caption="Package preview; does not independently prove spatial registration.")
+        if "view/layer_stack.png" in files:
+            st.image(files["view/layer_stack.png"], caption="IFC layer-stack preview.")
+        ifc_names = sorted(n for n in files if n.lower().endswith(".ifc"))
+        for name in ifc_names:
+            st.download_button(f"Download IFC: {Path(name).name}", files[name], Path(name).name, "application/octet-stream", key="project_zip_ifc_" + str(ifc_names.index(name)))
+        st.warning("The package describes scan-to-IFC axes as a hypothesis. Treat the mapping as unverified until independently registered.")
+    with tabs[4]:
+        report_names = sorted(n for n in files if n.startswith("reports/") or n.endswith(".ttl") or n.startswith("metadata/shapes"))
+        for name in report_names:
+            with st.expander(name, expanded=name.endswith("validation_summary.txt")):
+                raw = files[name]
+                if name.lower().endswith(".csv"):
+                    try:
+                        st.dataframe(pd.read_csv(io.BytesIO(raw)), use_container_width=True, hide_index=True)
+                    except Exception:
+                        st.code(raw.decode("utf-8", errors="replace"))
+                elif name.lower().endswith((".json", ".jsonld")):
+                    try:
+                        st.json(json.loads(raw.decode("utf-8-sig")), expanded=2)
+                    except Exception:
+                        st.code(raw.decode("utf-8", errors="replace"))
+                elif name.lower().endswith(".png"):
+                    st.image(raw)
+                else:
+                    st.code(raw.decode("utf-8", errors="replace"))
+                st.download_button("Download artifact", raw, Path(name).name, key="project_zip_report_" + str(report_names.index(name)))
+    with tabs[5]:
+        inventory = pd.DataFrame([{"Path": n, "Bytes": len(v), "SHA-256": sha256_uri(v)} for n, v in sorted(files.items())])
+        st.dataframe(inventory, use_container_width=True, hide_index=True)
+        selected = st.selectbox("Download any package file", sorted(files), key="project_zip_any_file")
+        st.download_button("Download selected file unchanged", files[selected], Path(selected).name, key="project_zip_any_download")
+
 def render_persistent_thesis_workspace() -> None:
     st.markdown("# VIBRO•IFC · Research data workbench")
     st.caption("Persistent batch intake · real source inspection · FAIR-oriented JSON-LD · IFC context · Blender/Bonsai hand-off")
     st.info("Uploaded inputs are retained in this Streamlit session when you navigate between workspace sections. Use **Start new batch** only when you intend to replace the current workspace.")
     if st.button("Start new batch / clear retained uploads", type="secondary", key="clear_persistent_batch"):
-        for key in ("vibro_saved_measurements", "vibro_saved_metadata", "vibro_saved_ifc", "vibro_saved_viewer", "vibro_batch_report", "vibro_batch_key"):
+        for key in ("vibro_saved_measurements", "vibro_saved_metadata", "vibro_saved_ifc", "vibro_saved_viewer", "vibro_batch_report", "vibro_batch_key", "vibro_project_package"):
             st.session_state.pop(key, None)
         st.rerun()
+
+    project_zip_widget = st.file_uploader("Load your existing LDV/IFC project package (.zip)", type=["zip"], key="persistent_project_zip_widget")
+    if project_zip_widget is not None:
+        try:
+            project_package = _inspect_project_package(project_zip_widget.getvalue())
+            st.session_state["vibro_project_package"] = {"name": project_zip_widget.name, "bytes": project_zip_widget.getvalue()}
+            _render_project_package(project_package)
+            st.divider()
+            st.subheader("Or build a new batch from individual uploads")
+        except (zipfile.BadZipFile, OSError, ValueError) as exc:
+            st.error(f"Could not read this project ZIP: {exc}")
+    elif st.session_state.get("vibro_project_package"):
+        saved_package = st.session_state["vibro_project_package"]
+        try:
+            _render_project_package(_inspect_project_package(saved_package["bytes"]))
+            st.divider()
+            st.subheader("Or build a new batch from individual uploads")
+        except (zipfile.BadZipFile, OSError, ValueError) as exc:
+            st.error(f"Could not read retained project ZIP: {exc}")
 
     c1, c2 = st.columns([1.2, 1])
     with c1:
