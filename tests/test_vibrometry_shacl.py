@@ -57,3 +57,15 @@ def test_invalid_checksum_lexical_form_fails_shacl():
     result = validate_shacl(sidecar)
     assert not result["conforms"]
     assert "sha256" in result["report_text"]
+
+
+def test_invalid_calendar_date_and_profile_version_fail_shacl():
+    sidecar = _sidecar()
+    sidecar["labContext"]["measurementDate"] = "2026-02-29"
+    sidecar["profileVersion"] = "9.9.9"
+
+    result = validate_shacl(sidecar)
+
+    assert not result["conforms"]
+    assert "measurementDate" in result["report_text"]
+    assert "profileVersion" in result["report_text"]

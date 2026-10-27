@@ -21,10 +21,31 @@ _POINT_RE = re.compile(
 
 def _number(value: str) -> float | None:
     try:
-        result = float(value.strip())
+        cleaned = value.strip()
+        # A semicolon-delimited export commonly uses comma decimal marks.  Do
+        # not guess at thousands separators: only normalise the unambiguous
+        # single-comma/no-period form.
+        if cleaned.count(",") == 1 and "." not in cleaned:
+            cleaned = cleaned.replace(",", ".")
+        result = float(cleaned)
         return result if math.isfinite(result) else None
     except (TypeError, ValueError):
         return None
+
+
+def _decode_payload(payload: bytes) -> tuple[str, str]:
+    """Decode for inspection without claiming replacement characters are data.
+
+    The input bytes are never changed or re-exported.  UTF-8 is preferred,
+    followed by the common Windows laboratory-export encoding and Latin-1 as
+    a lossless final fallback.
+    """
+    for encoding in ("utf-8-sig", "cp1252", "latin-1"):
+        try:
+            return payload.decode(encoding), encoding
+        except UnicodeDecodeError:
+            continue
+    raise AssertionError("latin-1 must decode every byte")
 
 
 def inspect_sldv_payload(filename: str, payload: bytes) -> dict[str, Any]:
@@ -37,10 +58,10 @@ def inspect_sldv_payload(filename: str, payload: bytes) -> dict[str, Any]:
             "reason": "Only original .txt and .csv measurement payloads are supported by the thesis profile.",
         }
 
-    text = payload.decode("utf-8-sig", errors="replace")
+    text, encoding_used = _decode_payload(payload)
     lines = text.splitlines()
     point = None
-    for line in lines[:12]:
+    for line in lines[:200]:
         match = _POINT_RE.search(line)
         if match:
             point = {
@@ -53,7 +74,12 @@ def inspect_sldv_payload(filename: str, payload: bytes) -> dict[str, Any]:
             break
 
     if suffix == ".csv":
-        raw_rows = list(csv.reader(io.StringIO(text)))
+        sample = "\n".join(line for line in lines if line.strip())[:8192]
+        try:
+            dialect = csv.Sniffer().sniff(sample, delimiters=",;\t")
+        except csv.Error:
+            dialect = csv.excel
+        raw_rows = list(csv.reader(io.StringIO(text), dialect))
     else:
         raw_rows = [line.split("\t") for line in lines]
 
@@ -102,7 +128,7 @@ def inspect_sldv_payload(filename: str, payload: bytes) -> dict[str, Any]:
         "filename": filename,
         "media_type": "text/csv" if suffix == ".csv" else "text/plain",
         "byte_size": len(payload),
-        "encoding_used_for_inspection": "UTF-8 with replacement fallback",
+        "encoding_used_for_inspection": encoding_used,
         "line_count": len(lines),
         "numeric_row_count": len(numeric_rows),
         "numeric_column_count": widths[0] if rectangular and widths else None,

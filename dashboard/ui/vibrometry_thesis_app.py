@@ -179,7 +179,7 @@ def render_overview() -> None:
         _html_card(
             "architecture-card",
             "02 · Meaning & links",
-            "<div class='architecture-step'>JSON-LD metadata</div><p>Variables, units, sensor and observation context, processing lineage, coordinate-system declaration and IFC component identity are recorded with SOSA/SSN, QUDT and PROV-O concepts.</p><p><code>ifcLinkRecord</code><br><code>arrayCatalog</code><br><code>provenance</code></p>",
+            "<div class='architecture-step'>JSON-LD metadata</div><p>Laboratory method, units, processing lineage, limitations and IFC component identity are recorded as an executable application-profile record.</p><p><code>measurementPayload</code><br><code>labContext</code><br><code>ifcLinkRecord</code></p>",
         )
     with package:
         _html_card(
@@ -190,7 +190,7 @@ def render_overview() -> None:
 
     st.markdown("### Demonstrator flow")
     flow_cols = st.columns([1, .14, 1, .14, 1, .14, 1])
-    flow_cols[0].markdown("**Raw export**<br><span class='metric-caption'>CSV · UFF/UNV · vendor formats</span>", unsafe_allow_html=True)
+    flow_cols[0].markdown("**Raw export**<br><span class='metric-caption'>SLDV TXT · CSV</span>", unsafe_allow_html=True)
     flow_cols[1].markdown("<div class='flow-line'>→</div>", unsafe_allow_html=True)
     flow_cols[2].markdown("**Describe**<br><span class='metric-caption'>Python · lab context · JSON-LD sidecar</span>", unsafe_allow_html=True)
     flow_cols[3].markdown("<div class='flow-line'>→</div>", unsafe_allow_html=True)
@@ -219,17 +219,17 @@ reports/vibrometry-cross-layer-validation.json""",
     )
     c1, c2, c3 = st.columns(3)
     with c1:
-        _html_card("architecture-card", "Storage strategy", "<ul><li>Chunk by scan-point and frequency access patterns.</li><li>Use compression while preserving numeric datatype.</li><li>Keep raw source exports alongside the HDF5 derivative.</li></ul>")
+        _html_card("architecture-card", "Storage strategy", "<ul><li>Preserve the uploaded TXT/CSV bytes unchanged.</li><li>Record filename, media type, byte count and SHA-256.</li><li>Keep the source payload inside the package.</li></ul>")
     with c2:
-        _html_card("architecture-card", "Array semantics", "<ul><li>Attach units and quantity definitions as attributes.</li><li>Use HDF5 dimension scales for coordinates and axes.</li><li>Define array IDs for metadata and validation references.</li></ul>")
+        _html_card("architecture-card", "Measurement semantics", "<ul><li>Declare the measured quantity and unit.</li><li>Describe scan setup and processing.</li><li>Report a candidate axis only when it is file-derived.</li></ul>")
     with c3:
-        _html_card("architecture-card", "Inspection targets", "<ul><li>HDFView: hierarchy, dtype, attributes and slices.</li><li>h5py: reproducible programmatic reads.</li><li>Browser: human-readable metadata and report.</li></ul>")
+        _html_card("architecture-card", "Inspection targets", "<ul><li>Text/CSV tools: source rows and columns.</li><li>Python: repeatable source diagnostics.</li><li>Browser: human-readable metadata and report.</li></ul>")
 
     st.markdown("### Design decisions linked to the research questions")
     decisions = [
-        ("RQ1 · Efficient organisation", "Coordinate arrays, dimension scales and chunked datasets enable point spectra and frequency slices without loading an entire experiment."),
-        ("Raw value preservation", "Where values are copied unchanged, selected source values and HDF5 values are compared exactly; otherwise the package records the conversion and tolerance."),
-        ("No array duplication in metadata", "JSON-LD identifies and explains arrays, paths, dimensions and units. It does not serialise dense vibrometry fields as RDF literals."),
+        ("RQ1 · Source preservation", "The original TXT/CSV payload remains available for inspection; the package records its byte identity and derived diagnostics without converting it."),
+        ("Laboratory context", "The sidecar records the documented method, scan setup, quantity, unit, processing, calibration status and limitations."),
+        ("No value duplication in metadata", "JSON-LD identifies the source file and its meaning. It does not serialise dense vibrometry values as RDF literals."),
     ]
     for title, body in decisions:
         with st.expander(title):
@@ -287,8 +287,8 @@ def render_validation() -> None:
     )
     st.markdown("### Multi-level validation suite")
     items = (
-        ("Structural", "Expected HDF5 paths, dtypes, dimension scales, chunking and JSON-LD syntax."),
-        ("Numerical", "Selected source-export values trace to declared HDF5 arrays and indices; conversion rules use an explicit tolerance."),
+        ("Structural", "TXT/CSV file gate, source diagnostics, hashes, JSON-LD syntax and SHACL profile checks."),
+        ("Source integrity", "The packaged TXT/CSV and IFC bytes are compared with the hashes recorded in the sidecar."),
         ("Semantic", "Competency checks answer: which component, which quantity and unit, which source and which processing activity?"),
         ("IFC context", "IfcOpenShell resolves GlobalId, checks entity type and captures available material/assembly evidence."),
     )
@@ -299,10 +299,10 @@ def render_validation() -> None:
     st.markdown("### Inspection workflow")
     st.dataframe(
         [
-            {"Tool": "HDFView", "Inspects": "HDF5 hierarchy, attributes, dimensions and selected data slices", "Evidence": "Numerical structure is open and navigable"},
+            {"Tool": "Text/CSV viewer", "Inspects": "Original rows, delimiters and source columns", "Evidence": "Source payload is directly inspectable"},
             {"Tool": "Bonsai / BlenderBIM", "Inspects": "IFC component, attached document reference and summary property set", "Evidence": "Component context is visible in an OpenBIM viewer"},
             {"Tool": "Web browser", "Inspects": "JSON-LD / RO-Crate-style manifest, README and validation report", "Evidence": "Package meaning is reviewable without proprietary software"},
-            {"Tool": "Python verifier", "Inspects": "Checksums, HDF5 paths, selected values, semantic fields and GlobalId resolution", "Evidence": "Repeatable automated verification"},
+            {"Tool": "Python verifier", "Inspects": "Checksums, TXT/CSV diagnostics, semantic fields and GlobalId resolution", "Evidence": "Repeatable automated verification"},
         ],
         use_container_width=True,
         hide_index=True,
@@ -324,7 +324,7 @@ def render_fair_evidence() -> None:
     )
     fair_rows = [
         {"Dimension": "Findable", "Package evidence": "Identifier, labels, acquisition metadata, IFC GlobalId", "Verification": "Manifest parsing and metadata indexing"},
-        {"Dimension": "Accessible", "Package evidence": "HDF5, JSON-LD, IFC and documented access instructions", "Verification": "Open with h5py, IfcOpenShell and standard tools"},
+        {"Dimension": "Accessible", "Package evidence": "TXT/CSV, JSON-LD, IFC and documented access instructions", "Verification": "Open with standard text/CSV tools, IfcOpenShell and a browser"},
         {"Dimension": "Interoperable", "Package evidence": "SOSA/SSN, QUDT, PROV-O and explicit IFC context", "Verification": "Resolvable vocabulary references and semantic checks"},
         {"Dimension": "Reusable", "Package evidence": "Lineage, material context, licence, limitations and validation records", "Verification": "Audit trail and competency checks"},
     ]
@@ -393,7 +393,7 @@ def render_method_scope() -> None:
         "Thesis framing",
     )
     questions = [
-        ("RQ1", "How can vibrometer-derived arrays be organised in vendor-neutral HDF5 for efficient storage and selective slicing?"),
+        ("RQ1", "How can original SLDV TXT/CSV payloads be preserved and described for traceable reuse?"),
         ("RQ2", "How can variables, units, provenance and IFC component context be described semantically without modifying IFC?"),
         ("RQ3", "How can selected values be traced from a raw export into a package and verified through open tools and scripts?"),
         ("RQ4", "To what extent does the package support structural validity, machine readability, IFC context, inspection and FAIR-oriented reuse?"),
@@ -404,7 +404,7 @@ def render_method_scope() -> None:
     st.markdown("### Explicit scope boundaries")
     scope_a, scope_b, scope_c = st.columns(3)
     with scope_a:
-        _html_card("scope-card", "Included", "<ul><li>HDF5 hierarchy for selected vibrometry data</li><li>Semantic metadata and package construction</li><li>IFC component association and validation</li><li>Open-tool inspection workflow</li></ul>")
+        _html_card("scope-card", "Included", "<ul><li>Original SLDV TXT/CSV preservation and inspection</li><li>Semantic metadata and package construction</li><li>IFC component association and validation</li><li>Open-tool inspection workflow</li></ul>")
     with scope_b:
         _html_card("scope-card", "Not developed", "<ul><li>3D registration or mesh-projection algorithm</li><li>IFC EXPRESS schema extension</li><li>Custom visualisation viewer</li><li>Acoustic simulation solver</li></ul>")
     with scope_c:
@@ -414,8 +414,8 @@ def render_method_scope() -> None:
     st.dataframe(
         [
             {"Month": "1", "Focus": "Source profiling & feasibility", "Output": "Raw export profile, IFC inspection, competency questions"},
-            {"Month": "2", "Focus": "Schema design", "Output": "HDF5 hierarchy, JSON-LD metadata and link record"},
-            {"Month": "3", "Focus": "ETL implementation", "Output": "Raw-to-HDF5 pipeline and IFC context extraction"},
+            {"Month": "2", "Focus": "Schema design", "Output": "TXT/CSV application profile, JSON-LD metadata and link record"},
+            {"Month": "3", "Focus": "Package implementation", "Output": "Source-preserving package builder and IFC context extraction"},
             {"Month": "4", "Focus": "Validation demonstrator", "Output": "Structural, numerical and IFC verification evidence"},
             {"Month": "5", "Focus": "Evaluation", "Output": "FAIR-support, retrieval and competency assessment"},
             {"Month": "6", "Focus": "Finalisation", "Output": "Reproducibility package, thesis and defence material"},
@@ -444,7 +444,7 @@ def run_vibrometry_thesis_app() -> None:
             "Upload a paired IFC model and a primary measurement asset, establish an explicit qualified relationship, and generate a locally inspectable research-object package.",
             "Workflow implementation",
         )
-        st.info("Use HDF5/H5 when a numerical container already exists. CSV, XML, UFF/UNV-style and vendor-derived files can be retained as source assets; the next workflow stage maps their arrays into the canonical HDF5 hierarchy.")
+        st.info("This thesis workflow accepts original SLDV TXT/CSV payloads only. It preserves their bytes and links them to laboratory and IFC context; it does not create an HDF5 derivative.")
         render_research_builder()
     elif selected == "Data Architecture":
         render_data_architecture()

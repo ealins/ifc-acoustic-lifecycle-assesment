@@ -35,6 +35,17 @@ def test_csv_inspection_does_not_assume_fixed_columns_or_frequency_range():
     assert result["candidate_axis"]["end"] == 200.0
 
 
+def test_inspection_preserves_legacy_encoding_and_semicolon_decimal_data():
+    payload = "frequency;velocity_µm_s\n20,0;1,25\n21,0;1,50\n".encode("cp1252")
+
+    result = inspect_sldv_payload("scan.csv", payload)
+
+    assert result["encoding_used_for_inspection"] == "cp1252"
+    assert result["numeric_row_count"] == 2
+    assert result["numeric_column_count"] == 2
+    assert result["candidate_axis"]["start"] == 20.0
+
+
 def test_rejects_hdf5_as_thesis_payload_without_converting_it():
     result = inspect_sldv_payload("scan.h5", b"opaque")
 
