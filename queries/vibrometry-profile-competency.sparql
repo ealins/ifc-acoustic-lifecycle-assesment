@@ -1,0 +1,17 @@
+PREFIX dct: <http://purl.org/dc/terms/>
+PREFIX vibro: <https://w3id.org/vibro-ifc/vocab/>
+
+# Competency query: which original payload is linked to which IFC component?
+# Run this against metadata/vibrometry-sidecar.jsonld after JSON-LD parsing.
+SELECT ?record ?profile ?payload ?payloadHash ?ifcFile ?ifcHash ?globalId ?entityType
+WHERE {
+  ?record a vibro:VibrometryMeasurementRecord ;
+          dct:conformsTo ?profile ;
+          vibro:measurementPayload ?payload ;
+          vibro:ifcLinkRecord ?ifcLink .
+  ?payload vibro:sha256 ?payloadHash .
+  ?ifcLink vibro:ifcFileName ?ifcFile ;
+           vibro:ifcSha256 ?ifcHash ;
+           vibro:ifcGlobalId ?globalId ;
+           vibro:ifcEntityType ?entityType .
+}

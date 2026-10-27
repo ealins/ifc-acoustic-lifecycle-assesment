@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from fair_platform.vibrometry_sidecar import PROFILE_ID, PROFILE_VERSION, build_sidecar, sha256_uri, validate_shacl
+from fair_platform.vibrometry_sidecar import PROFILE_ID, PROFILE_VERSION, build_sidecar, query_profile_record, sha256_uri, validate_shacl
 
 
 def _lab_context():
@@ -14,7 +14,7 @@ def _lab_context():
         "measuredQuantity": "velocity",
         "unit": "m/s",
         "processingDescription": "unknown",
-        "limitations": "Instrument, calibration and processing details require confirmation.",
+        "limitations": "Instrument, calibration and processing details are unknown and require confirmation.",
     }
 
 
@@ -26,7 +26,7 @@ def _sidecar():
         payload,
         _lab_context(),
         {
-            "global_id": "0abc",
+            "global_id": "0HAsj4B9D2bBEUfukRtNYE",
             "ifc_schema": "IFC4",
             "source_sha256": sha256_uri(ifc_bytes),
             "ifc_class": "IfcWall",
@@ -69,3 +69,23 @@ def test_invalid_calendar_date_and_profile_version_fail_shacl():
     assert not result["conforms"]
     assert "measurementDate" in result["report_text"]
     assert "profileVersion" in result["report_text"]
+
+
+def test_shacl_sparql_constraints_reject_inconsistent_payload_and_unknowns():
+    sidecar = _sidecar()
+    sidecar["measurementPayload"]["mediaType"] = "text/plain"
+    sidecar["labContext"]["limitations"] = "No documented limitations."
+
+    result = validate_shacl(sidecar)
+
+    assert not result["conforms"]
+    assert "filename extension" in result["report_text"]
+    assert "unknown laboratory value" in result["report_text"]
+
+
+def test_sparql_competency_query_returns_payload_to_ifc_link():
+    rows = query_profile_record(_sidecar())
+
+    assert len(rows) == 1
+    assert rows[0]["entityType"] == "IfcWall"
+    assert rows[0]["globalId"] == "0HAsj4B9D2bBEUfukRtNYE"

@@ -48,10 +48,20 @@ A required field means the record must carry a value or explicit uncertainty tok
 2. **Integrity gate:** recompute SHA-256 for measurement and IFC bytes.
 3. **JSON-LD gate:** parse the sidecar to RDF.
 4. **SHACL gate:** enforce required structure, checksum lexical forms, and profile conformance.
-5. **IFC cross-layer gate:** resolve the GlobalId against the supplied IFC model and compare GlobalId and entity type.
-6. **Package gate:** include sidecar, original inputs, manifest, and machine-readable report. The manifest identifies each packaged file and its hash.
+5. **SHACL-SPARQL gate:** enforce cross-field rules: filename/media-type agreement and an explicit limitations statement whenever laboratory values are recorded as `unknown`.
+6. **SPARQL competency query:** return the record, original payload hash, IFC file hash, GlobalId and entity type from the JSON-LD graph. The query is provided in `queries/vibrometry-profile-competency.sparql` and its result is included in the structural validation report.
+7. **IFC cross-layer gate:** resolve the GlobalId against the supplied IFC model and compare GlobalId and entity type.
+8. **Package gate:** include sidecar, original inputs, manifest, and machine-readable report. The manifest identifies each packaged file and its hash.
 
 SHACL cannot prove that a GlobalId exists in a particular IFC file or that a checksum matches file bytes. Those are procedural checks and must be reported separately.
+
+## Constraint design and references
+
+The executable shape uses SHACL Core for cardinality, closed shapes, lexical patterns and nested-node requirements; it uses SHACL-SPARQL only where a constraint compares multiple fields. The SPARQL competency query is an inspection aid, not a replacement for conformance or byte-level validation. These choices are based on:
+
+- W3C, *Shapes Constraint Language (SHACL)* Recommendation: conformance and machine-readable validation reports, including SHACL-SPARQL constraints.
+- W3C, *SPARQL 1.1 Query Language* Recommendation: portable RDF graph-pattern queries and `FILTER NOT EXISTS` checks.
+- Wilkinson et al. (2016), *The FAIR Guiding Principles for scientific data management and stewardship*, Scientific Data 3, 160018, doi:10.1038/sdata.2016.18: qualified links, provenance and rich metadata support reuse, but do not themselves certify scientific validity.
 
 ## Versioning policy
 

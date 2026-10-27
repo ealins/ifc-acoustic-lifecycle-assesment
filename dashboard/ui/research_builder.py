@@ -685,6 +685,15 @@ def render_research_builder() -> None:
                 ) or "unknown",
                 "limitations": quality_information.get("limitations") or "unknown",
             }
+            # The profile permits explicit unknowns, but makes their reuse
+            # consequence visible in limitations rather than leaving an
+            # apparently complete record with undocumented gaps.
+            unknown_fields = [
+                field for field in ("instrument", "operator", "calibrationStatus", "scanSetup", "processingDescription")
+                if lab_profile_context[field] == "unknown"
+            ]
+            if unknown_fields and "unknown" not in lab_profile_context["limitations"].lower():
+                lab_profile_context["limitations"] += "; Unknown laboratory fields: " + ", ".join(unknown_fields) + "."
             ifc_profile_context = {
                 **geometry,
                 "source_file": ifc_file.name,
