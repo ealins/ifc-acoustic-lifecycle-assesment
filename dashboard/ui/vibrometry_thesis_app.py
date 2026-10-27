@@ -104,7 +104,7 @@ def _sidebar() -> str:
         st.caption("The original TXT/CSV measurement payload is retained. IFC stores component context and a document pointer—not scan values.")
         st.divider()
         st.markdown("**Open inspection**")
-        st.caption("HDFView · Bonsai / BlenderBIM · Browser · Python verification")
+        st.caption("Text/CSV viewer · Bonsai / BlenderBIM · Browser · Python verification")
     return selected
 
 
