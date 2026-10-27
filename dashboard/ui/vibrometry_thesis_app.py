@@ -14,12 +14,14 @@ from dashboard.backend.fair_bridge import ensure_state, packages
 from dashboard.ui.fair_dashboard import hero, inject_platform_css
 from dashboard.ui.research_builder import render_research_builder
 from dashboard.ui.live_validation_workbench import render_live_validation_workbench
+from dashboard.ui.batch_measurement_intake import render_batch_measurement_intake
 from fair_platform.export import export_research_object
 
 
 NAV_ITEMS = (
     "Thesis Overview",
     "Package Builder",
+    "Batch Measurement Intake",
     "Data Architecture",
     "IFC Linkage",
     "Validation & Traceability",
@@ -450,6 +452,8 @@ def run_vibrometry_thesis_app() -> None:
         )
         st.info("This thesis workflow accepts original SLDV TXT/CSV payloads only. It preserves their bytes and links them to laboratory and IFC context; it does not create an HDF5 derivative.")
         render_research_builder()
+    elif selected == "Batch Measurement Intake":
+        render_batch_measurement_intake()
     elif selected == "Data Architecture":
         render_data_architecture()
     elif selected == "IFC Linkage":
