@@ -143,3 +143,25 @@ With one specimen, report case counts and bounded conclusions. Do not generalize
 Prefer: “The record conforms to profile 0.1.0 under shapes file X, and the measurement/IFC byte-integrity and component-reference checks returned no issues for this input pair.”
 
 Avoid: “The data are FAIR,” “the scan is registered to the wall,” or “the system is scientifically validated” unless independent evidence supports those broader claims.
+
+## 7. Interactive, source-linked validation workspace
+
+The thesis-facing Streamlit app embeds `dashboard/ui/live_validation_workbench.py` in **Validation & Traceability**. The workbench reads the current Python modules, SHACL Turtle file, test file, and evaluation protocol from the checked-out application directory at runtime. It displays a SHA-256 digest and byte count for the selected source file, so the inspected code/rules can be identified precisely. The application reruns the page when a control changes; the selected defect scenario is then applied to a freshly built fixture and the real profile functions are called again.
+
+### What is live
+
+- The code/rule explorer reads the current file from disk instead of using a copied code excerpt.
+- The scenario selector rebuilds the fixture, injects one named defect, and executes cross-layer checks, JSON-LD parsing, SPARQL competency query, and SHACL validation.
+- Result panels expose the issue codes, SHACL report, query rows, and exact sidecar used for the run.
+- The traceability matrix connects validation layers to implementation functions, evidence, and interpretation limits.
+- Unit tests exercise the baseline, changed measurement bytes, unresolved IFC identity, and a missing SHACL property.
+
+### How to interpret the test lab
+
+The interactive fixture deliberately uses synthetic measurement bytes and synthetic IFC bytes. It tests validator behavior and is **not** a claim that an actual IFC file has been parsed or that the real laboratory experiment passed. The displayed IFC-resolution input is a controlled test double. For thesis results, upload/use the authoritative specimen through the package builder and retain its actual IFC parser output, measurement/IFC hashes, profile version, code commit, and reports.
+
+### Freshness and limitations
+
+Streamlit reruns the active page when its controls change. If source files change on disk, the explorer will read their current contents on the next app rerun; depending on the Streamlit deployment configuration, an application process restart may be required for Python module code itself to reload. A deployment should therefore record its checked-out commit and restart/redeploy when Python implementation changes. This workbench does not claim an always-running filesystem watcher or automatic remote deployment.
+
+The selected source digest is evidence of the bytes inspected, not a source-code correctness proof. Likewise, “PASS” means the displayed fixture passed the listed executed checks; it must not be reused as a status for a different specimen or a stale application version.
