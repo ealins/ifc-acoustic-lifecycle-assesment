@@ -12,7 +12,6 @@ import streamlit as st
 
 from dashboard.backend.fair_bridge import ensure_state, packages
 from dashboard.ui.fair_dashboard import hero, inject_platform_css
-from dashboard.ui.research_builder import render_research_builder
 from dashboard.ui.live_validation_workbench import render_live_validation_workbench
 from dashboard.ui.batch_measurement_intake import render_batch_measurement_intake
 from fair_platform.export import export_research_object
@@ -20,7 +19,6 @@ from fair_platform.export import export_research_object
 
 NAV_ITEMS = (
     "Thesis Overview",
-    "Package Builder",
     "Batch Measurement Intake",
     "Data Architecture",
     "IFC Linkage",
@@ -353,7 +351,7 @@ def render_package_library() -> None:
     )
     objects = packages()
     if not objects:
-        st.info("No package is available yet. Use **Package Builder** to upload an IFC model and a vibrometry-derived measurement asset.")
+        st.info("No package is available yet. Upload the batch inputs in **Batch Measurement Intake** to inspect source-linked records here.")
         return
 
     keyword, status = st.columns([2, 1])
@@ -444,14 +442,6 @@ def run_vibrometry_thesis_app() -> None:
 
     if selected == "Thesis Overview":
         render_overview()
-    elif selected == "Package Builder":
-        _page_intro(
-            "Build an IFC-linked vibrometry package",
-            "Upload a paired IFC model and a primary measurement asset, establish an explicit qualified relationship, and generate a locally inspectable research-object package.",
-            "Workflow implementation",
-        )
-        st.info("This thesis workflow accepts original SLDV TXT/CSV payloads only. It preserves their bytes and links them to laboratory and IFC context; it does not create an HDF5 derivative.")
-        render_research_builder()
     elif selected == "Batch Measurement Intake":
         render_batch_measurement_intake()
     elif selected == "Data Architecture":
