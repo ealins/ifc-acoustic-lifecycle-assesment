@@ -25,6 +25,7 @@ from fair_platform.vibrometry_sidecar import (
     sha256_uri,
     validate_shacl,
     validate_sidecar,
+    jsonld_is_parseable,
 )
 
 
@@ -129,7 +130,7 @@ def _lab_context(metadata: dict[str, Any], per_file: dict[str, Any]):
     shared_sources = []
     for key in ("labContext", "extractedFields"):
         value = metadata.get(key, {})
-        if isinstance(value, dict):
+        if isinstance(value, dict) and value:
             shared_sources.append((value, metadata.get("sourceDocument") or key))
     if not shared_sources and not metadata.get("records"):
         shared_sources.append((metadata, metadata.get("sourceDocument") or "metadata root"))
@@ -306,14 +307,18 @@ def render_batch_measurement_intake() -> None:
                     {"resolved": bool(selected_component.get("global_id")), "global_id": selected_component.get("global_id"), "ifc_class": selected_component.get("ifc_class")},
                 )
                 shacl = validate_shacl(sidecar)
+                try:
+                    jsonld_parseable = jsonld_is_parseable(sidecar)
+                except Exception:
+                    jsonld_parseable = False
                 payload_analysis = inspect_sldv_payload(filename, payload)
                 preview, plot, plot_note = _read_signal_preview(filename, payload)
                 record.update({"sidecar": sidecar, "payload_analysis": payload_analysis, "signal_preview": preview, "signal_plot": plot, "signal_note": plot_note})
                 validation = {
-                    "overall": not cross and bool(shacl.get("conforms")),
+                    "overall": not cross and bool(shacl.get("conforms")) and jsonld_parseable,
                     "cross_layer": {"conforms": not cross, "issues": cross},
                     "shacl": shacl,
-                    "jsonld_parseable": True,
+                    "jsonld_parseable": jsonld_parseable,
                     "hashes": {
                         "measurement_expected": sidecar["measurementPayload"]["sha256"],
                         "measurement_actual": sha256_uri(payload),
@@ -325,6 +330,8 @@ def render_batch_measurement_intake() -> None:
                 findings = list(cross)
                 if not shacl.get("conforms"):
                     findings.append({"code": "SHACL_NONCONFORMANCE", "message": shacl.get("report_text", "Sidecar failed SHACL profile validation.")})
+                if not jsonld_parseable:
+                    findings.append({"code": "JSONLD_PARSE_FAILURE", "message": "The generated sidecar could not be parsed as JSON-LD."})
                 unknown = [key for key, value in lab.items() if value == "unknown"]
                 if unknown:
                     findings.append({"code": "MISSING_LAB_CONTEXT", "message": "Fields not found in supplied metadata: " + ", ".join(unknown)})
