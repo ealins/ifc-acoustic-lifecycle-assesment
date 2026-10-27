@@ -192,26 +192,26 @@ def _render_architecture(report: dict[str, Any], selected_record: dict[str, Any]
         st.markdown("#### 01 · Measurement")
         st.caption("Original TXT/CSV bytes")
         st.metric("Uploaded files", report.get("measurement_count", 0))
-        st.code("SHA-256 + byte size\\nSource payload stays unchanged", language="text")
+        st.code("SHA-256 + byte size\nSource payload stays unchanged", language="text")
     with b:
         st.markdown("#### 02 · Semantic")
         st.caption("Index JSON + JSON-LD 1.1 sidecars")
         st.metric("Sidecars generated", len(report.get("records", [])))
-        st.code("Record URI → payload hash\\nRecord URI → IFC link record", language="text")
+        st.code("Record URI → payload hash\nRecord URI → IFC link record", language="text")
     with c:
         st.markdown("#### 03 · IFC context")
         st.caption("Model + component identity")
         st.metric("IFC schema", report.get("ifc_schema") or "Not resolved")
-        st.code("IFC hash + schema\\nGlobalId + entity class", language="text")
+        st.code("IFC hash + schema\nGlobalId + entity class", language="text")
     st.markdown("#### Link path for the selected record")
     if selected_record:
         sidecar = selected_record.get("sidecar", {})
         payload = sidecar.get("measurementPayload", {})
         link = sidecar.get("ifcLinkRecord", {})
         st.code(
-            f'{selected_record.get("filename")}  [{payload.get("sha256", "no hash")}]\\n'
-            f'  └─ index entry: {selected_record.get("record_id")}\\n'
-            f'      └─ JSON-LD @id: {sidecar.get("@id", "missing")}\\n'
+            f'{selected_record.get("filename")}  [{payload.get("sha256", "no hash")}]\n'
+            f'  └─ index entry: {selected_record.get("record_id")}\n'
+            f'      └─ JSON-LD @id: {sidecar.get("@id", "missing")}\n'
             f'          └─ IFC: {link.get("ifcFileName", "unknown")} / {link.get("ifcGlobalId", "unknown")}',
             language="text",
         )
