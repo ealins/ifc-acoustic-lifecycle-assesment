@@ -23,7 +23,8 @@ from fair_platform.research_object import (
     relationship_type_allowed_for_origin,
 )
 from fair_platform.stewardship import FairStewardshipService
-from fair_platform.vibrometry_sidecar import build_sidecar, validate_sidecar
+from fair_platform.vibrometry_sidecar import build_sidecar, validate_sidecar, validate_shacl
+from fair_platform.sldv_payload import inspect_sldv_payload
 
 
 ACOUSTIC_PROFILE_OPTIONS = {
@@ -233,6 +234,11 @@ def render_research_builder() -> None:
                 key="ro_measurement",
             )
             _measurement_preview(measurement_file)
+            if measurement_file and Path(measurement_file.name).suffix.lower() in {".txt", ".csv"}:
+                payload_analysis = inspect_sldv_payload(measurement_file.name, measurement_file.getvalue())
+                with st.expander("SLDV source-file diagnostics", expanded=True):
+                    st.caption("File-derived diagnostics only. The original measurement bytes are preserved; candidate axes and coordinates are not treated as IFC registration evidence.")
+                    st.json(payload_analysis)
         measurement_filename = measurement_file.name if measurement_file else st.text_input("External/original filename", placeholder="acoustic-record.xml")
         measurement_identifier = st.text_input("Dataset identifier", placeholder="M01, LAB-001, source record ID...")
         measurement_version = st.text_input("Dataset/source version")
@@ -647,22 +653,74 @@ def render_research_builder() -> None:
         # The thesis workflow has three authoritative inputs: source measurement,
         # laboratory context, and IFC context.  No HDF5 derivative is created.
         if measurement_file:
+            # Keep the original TXT/CSV as the source of record. This report is
+            # derived inspection metadata only; it does not rewrite numeric data
+            # or assert that the scan frame is registered to the IFC frame.
+            payload_analysis = inspect_sldv_payload(measurement_file.name, measurement_file.getvalue())
+            package.assets["reports/sldv-payload-analysis.json"] = json.dumps(
+                payload_analysis, indent=2
+            ).encode("utf-8")
+            lab_profile_context = {
+                "method": measurement_context.get("measurement_method") or "unknown",
+                "instrument": measurement_context.get("instrument_model") or measurement_context.get("instrument") or "unknown",
+                "operator": measurement_context.get("operator") or "unknown",
+                "measurementDate": measurement_context.get("measurement_date") or "unknown",
+                "calibrationStatus": measurement_context.get("calibration_reference") or "unknown",
+                "scanSetup": "; ".join(
+                    value for value in (
+                        measurement_context.get("instrument_configuration"),
+                        measurement_context.get("excitation_method"),
+                        measurement_context.get("source_receiver_configuration"),
+                        measurement_context.get("sampling_information"),
+                        measurement_context.get("measurement_points"),
+                    ) if value
+                ) or "unknown",
+                "measuredQuantity": measurement_context.get("measured_quantity") or "unknown",
+                "unit": measurement_context.get("unit") or "unknown",
+                "processingDescription": "; ".join(
+                    value for value in (
+                        measurement_context.get("processing_software"),
+                        measurement_context.get("processing_steps"),
+                    ) if value
+                ) or "unknown",
+                "limitations": quality_information.get("limitations") or "unknown",
+            }
+            # The profile permits explicit unknowns, but makes their reuse
+            # consequence visible in limitations rather than leaving an
+            # apparently complete record with undocumented gaps.
+            unknown_fields = [
+                field for field in ("instrument", "operator", "calibrationStatus", "scanSetup", "processingDescription")
+                if lab_profile_context[field] == "unknown"
+            ]
+            if unknown_fields and "unknown" not in lab_profile_context["limitations"].lower():
+                lab_profile_context["limitations"] += "; Unknown laboratory fields: " + ", ".join(unknown_fields) + "."
+            ifc_profile_context = {
+                **geometry,
+                "source_file": ifc_file.name,
+                "source_sha256": geometry.get("source_sha256") or _sha256(ifc_file.getvalue()),
+            }
             sidecar = build_sidecar(
                 measurement_file.name,
                 measurement_file.getvalue(),
-                measurement_context,
-                geometry,
+                lab_profile_context,
+                ifc_profile_context,
                 record_id=measurement_identifier,
             )
             cross_layer_issues = validate_sidecar(
                 sidecar,
                 measurement_file.getvalue(),
                 ifc_file.getvalue(),
-                {"resolved": True, "global_id": geometry.get("global_id"), "ifc_class": geometry.get("ifc_class")},
+                {"resolved": bool(geometry.get("global_id")), "global_id": geometry.get("global_id"), "ifc_class": geometry.get("ifc_class")},
             )
+            shacl_result = validate_shacl(sidecar)
+            validation_report = {
+                "valid": not cross_layer_issues and shacl_result["conforms"],
+                "cross_layer": {"valid": not cross_layer_issues, "issues": cross_layer_issues},
+                "shacl": shacl_result,
+            }
             package.assets["metadata/vibrometry-sidecar.jsonld"] = json.dumps(sidecar, indent=2).encode("utf-8")
             package.assets["reports/vibrometry-cross-layer-validation.json"] = json.dumps(
-                {"valid": not cross_layer_issues, "issues": cross_layer_issues}, indent=2
+                validation_report, indent=2
             ).encode("utf-8")
             package.metadata["vibrometry_sidecar"] = "metadata/vibrometry-sidecar.jsonld"
         try:

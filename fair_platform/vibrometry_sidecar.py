@@ -89,6 +89,8 @@ def validate_sidecar(
     link = sidecar.get("ifcLinkRecord", {})
     if payload.get("sha256") != sha256_uri(measurement_payload):
         issues.append({"code": "MEASUREMENT_HASH_MISMATCH", "message": "Measurement bytes do not match the JSON-LD sidecar."})
+    if payload.get("byteSize") != len(measurement_payload):
+        issues.append({"code": "MEASUREMENT_SIZE_MISMATCH", "message": "Measurement byte count does not match the JSON-LD sidecar."})
     if link.get("ifcSha256") != sha256_uri(ifc_payload):
         issues.append({"code": "IFC_HASH_MISMATCH", "message": "IFC bytes do not match the JSON-LD sidecar."})
     if not resolved_ifc.get("resolved"):
@@ -104,3 +106,71 @@ def jsonld_is_parseable(sidecar: dict[str, Any]) -> bool:
     graph = Graph()
     graph.parse(data=__import__("json").dumps(sidecar), format="json-ld")
     return len(graph) > 0
+
+
+def query_profile_record(sidecar: dict[str, Any]) -> list[dict[str, str]]:
+    """Return a SPARQL competency-query view of the declared three-way link.
+
+    This is an inspection query, not a substitute for SHACL or byte/entity
+    checks.  Its output makes the record, payload and IFC evidence directly
+    queryable with standard SPARQL tooling.
+    """
+    import json
+
+    graph = Graph()
+    graph.parse(data=json.dumps(sidecar), format="json-ld")
+    query = """
+        PREFIX dct: <http://purl.org/dc/terms/>
+        PREFIX vibro: <https://w3id.org/vibro-ifc/vocab/>
+        SELECT ?record ?profile ?payload ?payloadHash ?ifcFile ?ifcHash ?globalId ?entityType
+        WHERE {
+          ?record a vibro:VibrometryMeasurementRecord ;
+                  dct:conformsTo ?profile ;
+                  vibro:measurementPayload ?payload ;
+                  vibro:ifcLinkRecord ?ifcLink .
+          ?payload vibro:sha256 ?payloadHash .
+          ?ifcLink vibro:ifcFileName ?ifcFile ;
+                   vibro:ifcSha256 ?ifcHash ;
+                   vibro:ifcGlobalId ?globalId ;
+                   vibro:ifcEntityType ?entityType .
+        }
+    """
+    return [
+        {str(name): str(value) for name, value in row.asdict().items()}
+        for row in graph.query(query)
+    ]
+
+
+def validate_shacl(sidecar: dict[str, Any], shapes_path: str | Path | None = None) -> dict[str, Any]:
+    """Validate JSON-LD against the versioned SHACL application profile.
+
+    Returns a machine-readable result suitable for inclusion in the package
+    report. This structural check is intentionally separate from byte-hash and
+    IFC entity-resolution checks in validate_sidecar().
+    """
+    import json
+    from pyshacl import validate
+
+    data_graph = Graph()
+    data_graph.parse(data=json.dumps(sidecar), format="json-ld")
+    path = Path(shapes_path) if shapes_path else Path(__file__).resolve().parent.parent / "shapes" / "vibrometry-profile.shacl.ttl"
+    shapes_graph = Graph()
+    shapes_graph.parse(path.as_posix(), format="turtle")
+    conforms, report_graph, report_text = validate(
+        data_graph,
+        shacl_graph=shapes_graph,
+        inference="none",
+        abort_on_first=False,
+        allow_infos=False,
+        allow_warnings=False,
+        meta_shacl=True,
+    )
+    return {
+        "conforms": bool(conforms),
+        "profile_id": PROFILE_ID,
+        "profile_version": PROFILE_VERSION,
+        "shapes_file": path.name,
+        "results_graph": report_graph.serialize(format="turtle"),
+        "report_text": str(report_text),
+        "sparql_record_links": query_profile_record(sidecar),
+    }
