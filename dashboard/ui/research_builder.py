@@ -24,6 +24,7 @@ from fair_platform.research_object import (
 )
 from fair_platform.stewardship import FairStewardshipService
 from fair_platform.vibrometry_sidecar import build_sidecar, validate_sidecar, validate_shacl
+from fair_platform.sldv_payload import inspect_sldv_payload
 
 
 ACOUSTIC_PROFILE_OPTIONS = {
@@ -233,6 +234,11 @@ def render_research_builder() -> None:
                 key="ro_measurement",
             )
             _measurement_preview(measurement_file)
+            if measurement_file and Path(measurement_file.name).suffix.lower() in {".txt", ".csv"}:
+                payload_analysis = inspect_sldv_payload(measurement_file.name, measurement_file.getvalue())
+                with st.expander("SLDV source-file diagnostics", expanded=True):
+                    st.caption("File-derived diagnostics only. The original measurement bytes are preserved; candidate axes and coordinates are not treated as IFC registration evidence.")
+                    st.json(payload_analysis)
         measurement_filename = measurement_file.name if measurement_file else st.text_input("External/original filename", placeholder="acoustic-record.xml")
         measurement_identifier = st.text_input("Dataset identifier", placeholder="M01, LAB-001, source record ID...")
         measurement_version = st.text_input("Dataset/source version")
@@ -647,6 +653,13 @@ def render_research_builder() -> None:
         # The thesis workflow has three authoritative inputs: source measurement,
         # laboratory context, and IFC context.  No HDF5 derivative is created.
         if measurement_file:
+            # Keep the original TXT/CSV as the source of record. This report is
+            # derived inspection metadata only; it does not rewrite numeric data
+            # or assert that the scan frame is registered to the IFC frame.
+            payload_analysis = inspect_sldv_payload(measurement_file.name, measurement_file.getvalue())
+            package.assets["reports/sldv-payload-analysis.json"] = json.dumps(
+                payload_analysis, indent=2
+            ).encode("utf-8")
             lab_profile_context = {
                 "method": measurement_context.get("measurement_method") or "unknown",
                 "instrument": measurement_context.get("instrument_model") or measurement_context.get("instrument") or "unknown",
