@@ -198,7 +198,7 @@ def render_batch_measurement_intake() -> None:
                 seen.add(filename)
                 payload = uploaded.getvalue()
                 per_file = _record_for_file(metadata, filename)
-                lab = _lab_context({**metadata.get("labContext", {}), **shared}, per_file)
+                shared_values = dict(metadata.get("labContext", {}))\n                shared_values.update(metadata.get("extractedFields", {}))\n                shared_values.update({key: value for key, value in shared.items() if value not in (None, "")})\n                lab = _lab_context(shared_values, per_file)
                 identifier = (id_list[index - 1] if len(id_list) >= index else per_file.get("recordIdentifier") or per_file.get("measurementIdentifier") or f"{record_prefix}-{index:03d}")
                 try:
                     sidecar = build_sidecar(filename, payload, lab, geometry, record_id=str(identifier))
