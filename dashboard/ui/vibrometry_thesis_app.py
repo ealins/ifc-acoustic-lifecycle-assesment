@@ -13,7 +13,7 @@ import streamlit as st
 from dashboard.backend.fair_bridge import ensure_state, packages
 from dashboard.ui.fair_dashboard import hero, inject_platform_css
 from dashboard.ui.live_validation_workbench import render_live_validation_workbench
-from dashboard.ui.batch_measurement_intake import render_batch_measurement_intake
+from dashboard.ui.persistent_thesis_workspace import render_persistent_thesis_workspace
 from fair_platform.export import export_research_object
 
 
@@ -443,7 +443,7 @@ def run_vibrometry_thesis_app() -> None:
     if selected == "Thesis Overview":
         render_overview()
     elif selected == "Batch Measurement Intake":
-        render_batch_measurement_intake()
+        render_persistent_thesis_workspace()
     elif selected == "Data Architecture":
         render_data_architecture()
     elif selected == "IFC Linkage":
