@@ -3,12 +3,12 @@ from fair_platform.sldv_payload import inspect_sldv_payload
 
 def test_inspects_library_style_sldv_txt_without_fixed_row_count():
     payload = (
-        "header 1\\nheader 2\\n"
-        "Point Index:\\t7\\t[x = 0.1 y = 0.2 z = 0.3]\\n"
-        "Frequency\\tXreal\\tXimag\\n"
-        "20\\t1.0\\t0.1\\n"
-        "21\\t2.0\\t0.2\\n"
-        "22\\t3.0\\t0.3\\n"
+        "header 1\nheader 2\n"
+        "Point Index:\t7\t[x = 0.1 y = 0.2 z = 0.3]\n"
+        "Frequency\tXreal\tXimag\n"
+        "20\t1.0\t0.1\n"
+        "21\t2.0\t0.2\n"
+        "22\t3.0\t0.3\n"
     ).encode("latin-1")
 
     result = inspect_sldv_payload("new_scan.txt", payload)
@@ -25,7 +25,7 @@ def test_inspects_library_style_sldv_txt_without_fixed_row_count():
 
 
 def test_csv_inspection_does_not_assume_fixed_columns_or_frequency_range():
-    payload = b"frequency,velocity,phase\\n100,0.2,0.3\\n200,0.4,0.5\\n"
+    payload = b"frequency,velocity,phase\n100,0.2,0.3\n200,0.4,0.5\n"
 
     result = inspect_sldv_payload("new_scan.csv", payload)
 
