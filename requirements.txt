@@ -1,6 +1,8 @@
 streamlit>=1.36
 pandas>=2.0
+numpy>=1.26
 rdflib>=7.0
 networkx>=3.0
 plotly>=5.20
 pyshacl>=0.30
+ifcopenshell>=0.8.3

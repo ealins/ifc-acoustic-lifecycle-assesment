@@ -42,6 +42,14 @@ def _checks(path: str, mtime: float, data_dir: str):
     return sv.data_checks(sv.load_record(path), data_dir or None)
 
 
+def _active_source():
+    """(records, default data folder, label): repository records, or the last build when chosen."""
+    build = st.session_state.get("build")
+    if build and st.session_state.get("use_build"):
+        return sv.list_records(build["records_dir"]), str(build["data_dir"]), "your last build"
+    return sv.list_records(), str(DEFAULT_DATA_DIR) if DEFAULT_DATA_DIR.is_dir() else "", "repository records"
+
+
 def _node_graph_figure(data: dict, show_labels: bool):
     import networkx as nx
     import plotly.graph_objects as go
@@ -108,13 +116,14 @@ def render_sidecar_v06() -> None:
     st.title("Sidecar architecture (profile v0.6)")
     st.caption("Three decoupled layers. This page is the engine: it reads a record, checks it, and shows what it contains. Blender is the visualisation.")
 
-    records = sv.list_records()
+    records, default_data, label = _active_source()
     if not records:
-        st.error(f"No records found in {sv.RECORDS_DIR}")
+        st.error("No records found. Use 'Build from new data' to create some.")
         return
+    st.caption(f"Showing: {label}.")
     left, right = st.columns([1, 2])
     chosen = left.selectbox("Record", records, format_func=lambda p: p.stem)
-    data_dir = right.text_input("Folder with the TXT files and the IFC (optional, for checksum checks)", value=str(DEFAULT_DATA_DIR) if DEFAULT_DATA_DIR.is_dir() else "")
+    data_dir = right.text_input("Folder with the TXT files and the IFC (optional, for checksum checks)", value=default_data, key=f"sidecar_data_{label}")
 
     mtime = chosen.stat().st_mtime
     data = _load(str(chosen), mtime)
@@ -172,9 +181,9 @@ def render_sidecar_v06() -> None:
 
 # ----------------------------------------------------------------- all records
 @st.cache_data(show_spinner=False)
-def _all_records(data_dir: str, stamp: float):
+def _all_records(data_dir: str, stamp: float, records_dir: str):
     rows = []
-    for path in sv.list_records():
+    for path in sv.list_records(records_dir):
         graph = sv.load_record(path)
         info, report = sv.summary(graph), sv.validate_record(graph)
         checks = sv.data_checks(graph, data_dir or None)
@@ -190,14 +199,19 @@ def _all_records(data_dir: str, stamp: float):
     return rows
 
 
-def _records_stamp() -> float:
-    return max((p.stat().st_mtime for p in sv.list_records()), default=0.0)
+def _records_stamp(records) -> float:
+    return max((p.stat().st_mtime for p in records), default=0.0)
 
 
 def render_overview() -> None:
     st.title("Vibrometry measurements linked to an IFC model")
     st.caption("A metadata profile (JSON-LD sidecar and SHACL shapes) that links SLDV measurement files and lab context to an IFC element. The IFC stays untouched.")
-    rows = _all_records(str(DEFAULT_DATA_DIR) if DEFAULT_DATA_DIR.is_dir() else "", _records_stamp())
+    records, default_data, label = _active_source()
+    if not records:
+        st.info("No records yet. Use 'Build from new data' in the sidebar.")
+        return
+    rows = _all_records(default_data, _records_stamp(records), str(records[0].parent))
+    st.caption(f"Showing: {label}.")
     a, b, c, d = st.columns(4)
     a.metric("Records (scan points)", len(rows))
     b.metric("Mandatory fields missing", sum(r["Violations"] for r in rows))
@@ -224,8 +238,13 @@ def render_overview() -> None:
 
 def render_records() -> None:
     st.title("All records")
-    data_dir = st.text_input("Folder with the TXT files and the IFC (optional)", value=str(DEFAULT_DATA_DIR) if DEFAULT_DATA_DIR.is_dir() else "", key="records_data_dir")
-    rows = _all_records(data_dir, _records_stamp())
+    records, default_data, label = _active_source()
+    if not records:
+        st.info("No records yet. Use 'Build from new data' in the sidebar.")
+        return
+    st.caption(f"Showing: {label}.")
+    data_dir = st.text_input("Folder with the TXT files and the IFC (optional)", value=default_data, key=f"records_data_{label}")
+    rows = _all_records(data_dir, _records_stamp(records), str(records[0].parent))
     st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
     st.caption("Violation = mandatory field missing. Warning = recommended field or a known gap. Records are in profile/v0.6/records.")
 
@@ -248,3 +267,54 @@ def render_method() -> None:
         "- Registration of the scan points on the wall.\n"
         "- A change to the IFC schema, or dense vibration values stored in IFC."
     )
+
+
+# ------------------------------------------------------------ build from new data
+def render_build() -> None:
+    from vibro_ifc import build_service as bs
+
+    st.title("Build from new data")
+    st.caption("Upload an IFC and the Polytec TXT files of a new measurement. The builder writes one v0.6 record per file, a spectra cache and a Blender view configuration. Your files are not modified.")
+    ifc_file = st.file_uploader("IFC model (a single wall works best)", type=["ifc"])
+    txt_files = st.file_uploader("Polytec TXT files (one per scan point)", type=["txt"], accept_multiple_files=True)
+    template = st.file_uploader("Lab facts (JSON-LD template, optional)", type=["jsonld", "json"])
+    if template is None:
+        st.warning("No template uploaded: the built-in template holds the lab facts of the CLT10-4-3 test (method, instrument, excitation as reported). For a different test, upload your own template, or those facts will be wrong.")
+    with st.expander("Options"):
+        c1, c2, c3 = st.columns(3)
+        freq = c1.number_input("Default frequency (Hz)", min_value=1.0, value=1000.0)
+        channel = c2.selectbox("Default channel", ["Z", "X", "Y", "NORM"])
+        face = c3.text_input("Reference face name", value="RF_A")
+
+    if st.button("Build records", type="primary", disabled=not (ifc_file and txt_files)):
+        with st.spinner("Reading the IFC geometry and the measurement files..."):
+            try:
+                result = bs.build_from_uploads(
+                    ifc_file.name, ifc_file.getvalue(), {f.name: f.getvalue() for f in txt_files},
+                    template.getvalue() if template else None,
+                    default_freq_hz=freq, default_channel=channel, face_name=face,
+                )
+            except bs.BuildError as exc:
+                st.error(str(exc))
+                return
+        st.session_state["build"] = result
+        st.session_state["use_build"] = True
+        st.session_state["build_zip"] = bs.package_zip(result)
+
+    result = st.session_state.get("build")
+    if not result:
+        return
+    st.success(f"{len(result['records'])} record(s) built. The Sidecar v0.6 and All records pages now show this build.")
+    rows = _all_records(str(result["data_dir"]), _records_stamp(result["records"]), str(result["records_dir"]))
+    a, b, c = st.columns(3)
+    a.metric("Records", len(rows))
+    b.metric("Files excluded", len(result["excluded"]))
+    c.metric("Mandatory fields missing", sum(r["Violations"] for r in rows))
+    if result["excluded"]:
+        st.warning("These files were not used:")
+        st.dataframe(pd.DataFrame([{"File": k, "Reason": v} for k, v in result["excluded"].items()]), use_container_width=True, hide_index=True)
+    frame = result.get("frame", {})
+    st.write(f"Position hypothesis: {frame.get('source', '-')}. Status: **{frame.get('status', '-')}**.")
+    st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+    st.download_button("Download the build (records, spectra cache, Blender view config, manifest)", st.session_state.get("build_zip", b""), file_name="vibro_ifc_build.zip", mime="application/zip")
+    st.caption("To use the build in Blender, place the zip contents next to your TXT files and the IFC, as in the original package.")

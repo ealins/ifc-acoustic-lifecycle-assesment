@@ -17,8 +17,9 @@ Blender is the visualisation. In its first version the add-on reads the sidecar 
 - `profile/v0.6/shapes_v0.6.ttl`: SHACL shapes. Violation = mandatory field, Warning = recommended field or known gap.
 - `profile/v0.6/records/`: one record per scan point (20 records).
 - `vibro_ifc/engine.py`: validation, checksum checks, declared gaps, class graph.
+- `vibro_ifc/build_service.py` and `vibro_ifc/builder/`: builds records from new inputs (an IFC, Polytec TXT files, lab facts). Also writes the spectra cache and the Blender view configuration.
 - `vibro_ifc/pages.py`, `vibro_ifc/app.py`: the Streamlit dashboard.
-- `tests/test_sidecar_v06.py`: engine tests.
+- `tests/`: engine and builder tests.
 
 ## Run
 
@@ -30,7 +31,9 @@ python -m venv .venv
 .\.venv\Scripts\python.exe -m pytest -q
 ```
 
-To compare checksums, put the TXT files and the IFC in `data/ldv` or enter another folder in the dashboard.
+**New measurement:** open *Build from new data*, upload the IFC and the TXT files (and your own lab-facts template; the built-in one holds the facts of the CLT10-4-3 test), and press Build. The Sidecar and Records pages then show your build, and the zip holds the records, spectra cache and Blender view configuration.
+
+To compare checksums for the repository records, put the TXT files and the IFC in `data/ldv` or enter another folder in the dashboard.
 
 ## Scope
 

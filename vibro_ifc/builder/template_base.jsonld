@@ -1,0 +1,665 @@
+{
+  "@context": {
+    "sosa": "http://www.w3.org/ns/sosa/",
+    "prov": "http://www.w3.org/ns/prov#",
+    "dcat": "http://www.w3.org/ns/dcat#",
+    "dcterms": "http://purl.org/dc/terms/",
+    "csvw": "http://www.w3.org/ns/csvw#",
+    "spdx": "http://spdx.org/rdf/terms#",
+    "qudt": "http://qudt.org/schema/qudt/",
+    "unit": "http://qudt.org/vocab/unit/",
+    "bot": "https://w3id.org/bot#",
+    "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+    "ldv": "https://example.org/ldv/profile#",
+    "ex": "https://example.org/ldv/id/",
+    "xsd": "http://www.w3.org/2001/XMLSchema#",
+    "@base": "https://example.org/ldv/package/",
+    "owl": "http://www.w3.org/2002/07/owl#",
+    "foaf": "http://xmlns.com/foaf/0.1/",
+    "dqv": "http://www.w3.org/ns/dqv#",
+    "geo": "http://www.opengis.net/ont/geosparql#",
+    "schema": "https://schema.org/",
+    "skos": "http://www.w3.org/2004/02/skos/core#",
+    "ls": "https://standards.iso.org/iso/21597/-1/ed-1/en/Linkset#",
+    "ifc": "https://standards.buildingsmart.org/IFC/DEV/IFC4/ADD2_TC1/OWL#",
+    "ssn-system": "http://www.w3.org/ns/ssn/systems/",
+    "ldvc": "https://example.org/ldv/concept/",
+    "ldvm": "https://example.org/ldv/metric/"
+  },
+  "@id": "ex:record/CLT10-4-3_{point}",
+  "@type": "dcat:CatalogRecord",
+  "dcterms:conformsTo": {
+    "@id": "https://example.org/ldv/profile/v0.6"
+  },
+  "owl:versionInfo": "0.6",
+  "foaf:primaryTopic": {
+    "@id": "ex:observation/CLT10-4-3_{point}",
+    "@type": [
+      "sosa:Observation",
+      "prov:Activity"
+    ],
+    "sosa:hasFeatureOfInterest": {
+      "@id": "ex:point/CLT10-4-3_{point}",
+      "@type": "sosa:Sample",
+      "dcterms:identifier": 2,
+      "geo:hasGeometry": {
+        "@type": "geo:Geometry",
+        "rdfs:label": "Ursprung",
+        "geo:asWKT": {
+          "@value": "<https://example.org/ldv/id/frame/Ursprung> POINT Z (1.573023 2.23633 0.008072711)",
+          "@type": "geo:wktLiteral"
+        },
+        "dqv:hasQualityMeasurement": [
+          {
+            "@type": "dqv:QualityMeasurement",
+            "dqv:isMeasurementOf": {
+              "@id": "ldvm:unitStatus"
+            },
+            "dqv:value": "not stated in header"
+          },
+          {
+            "@type": "dqv:QualityMeasurement",
+            "dqv:isMeasurementOf": {
+              "@id": "ldvm:definitionStatus"
+            },
+            "dqv:value": "absent"
+          }
+        ]
+      },
+      "sosa:isSampleOf": {
+        "@id": "ex:specimen/ZublinWall02",
+        "@type": [
+          "bot:Element"
+        ],
+        "bot:hasSubElement": [
+          {
+            "@id": "ex:ifc/2$jyVh1KP1hwW7KYYGc4As",
+            "@type": [
+              "bot:Element",
+              "ifc:IfcWall"
+            ],
+            "rdfs:label": "02_RockWool",
+            "dcterms:identifier": "2$jyVh1KP1hwW7KYYGc4As",
+            "spdx:checksum": {
+              "@type": "spdx:Checksum",
+              "spdx:algorithm": {
+                "@id": "spdx:checksumAlgorithm_sha256"
+              },
+              "spdx:checksumValue": "dad388ed044a394eab7dd3db42363d616fa4e81045df7ddcafcda0d975897ee7"
+            }
+          },
+          {
+            "@id": "ex:ifc/2$jyVh1KP1hwW7KYYGc4Av",
+            "@type": [
+              "bot:Element",
+              "ifc:IfcWall"
+            ],
+            "rdfs:label": "01_Base_Plaster",
+            "dcterms:identifier": "2$jyVh1KP1hwW7KYYGc4Av",
+            "spdx:checksum": {
+              "@type": "spdx:Checksum",
+              "spdx:algorithm": {
+                "@id": "spdx:checksumAlgorithm_sha256"
+              },
+              "spdx:checksumValue": "cae0009a50b30aecb22a30a37aec02454174d10ac01ec211cbb7963191d32b2d"
+            }
+          },
+          {
+            "@id": "ex:ifc/2$jyVh1KP1hwW7KYYGc4Au",
+            "@type": [
+              "bot:Element",
+              "ifc:IfcWall"
+            ],
+            "rdfs:label": "03_CrossLaminatedTimber",
+            "dcterms:identifier": "2$jyVh1KP1hwW7KYYGc4Au",
+            "spdx:checksum": {
+              "@type": "spdx:Checksum",
+              "spdx:algorithm": {
+                "@id": "spdx:checksumAlgorithm_sha256"
+              },
+              "spdx:checksumValue": "96cd410008d24589de178b212d89141214bada3f4331d92a29317cd28ff3a4b6"
+            }
+          },
+          {
+            "@id": "ex:ifc/2$jyVh1KP1hwW7KYYGc4Ax",
+            "@type": [
+              "bot:Element",
+              "ifc:IfcWall"
+            ],
+            "rdfs:label": "00_TopPlaster_Cement",
+            "dcterms:identifier": "2$jyVh1KP1hwW7KYYGc4Ax",
+            "spdx:checksum": {
+              "@type": "spdx:Checksum",
+              "spdx:algorithm": {
+                "@id": "spdx:checksumAlgorithm_sha256"
+              },
+              "spdx:checksumValue": "a6d54484c452108cdf2d5d7996f8352b370916a2078d4432e8ed7f68de1fb204"
+            }
+          },
+          {
+            "@id": "ex:ifc/0FK4_3Dy1BFBjBaa$LdXAw",
+            "@type": [
+              "bot:Element",
+              "ifc:IfcWall"
+            ],
+            "rdfs:label": "04_Planks",
+            "dcterms:identifier": "0FK4_3Dy1BFBjBaa$LdXAw",
+            "spdx:checksum": {
+              "@type": "spdx:Checksum",
+              "spdx:algorithm": {
+                "@id": "spdx:checksumAlgorithm_sha256"
+              },
+              "spdx:checksumValue": "0c63182dbaf57e52acee0a25d57378b161b69cc88865424c7f4b309869c72da0"
+            }
+          },
+          {
+            "@id": "ex:ifc/0FK4_3Dy1BFBjBaa$LdXAr",
+            "@type": [
+              "bot:Element",
+              "ifc:IfcWall"
+            ],
+            "rdfs:label": "05_Planks",
+            "dcterms:identifier": "0FK4_3Dy1BFBjBaa$LdXAr",
+            "spdx:checksum": {
+              "@type": "spdx:Checksum",
+              "spdx:algorithm": {
+                "@id": "spdx:checksumAlgorithm_sha256"
+              },
+              "spdx:checksumValue": "d937678cf8dd0f9704cc58cd7142439f4110ecf0f17fdd4cb3368adf3a962be1"
+            }
+          }
+        ],
+        "dcterms:hasPart": {
+          "@list": [
+            {
+              "@id": "ex:ifc/0FK4_3Dy1BFBjBaa$LdXAr"
+            },
+            {
+              "@id": "ex:ifc/0FK4_3Dy1BFBjBaa$LdXAw"
+            },
+            {
+              "@id": "ex:ifc/2$jyVh1KP1hwW7KYYGc4Au"
+            },
+            {
+              "@id": "ex:ifc/2$jyVh1KP1hwW7KYYGc4As"
+            },
+            {
+              "@id": "ex:ifc/2$jyVh1KP1hwW7KYYGc4Av"
+            },
+            {
+              "@id": "ex:ifc/2$jyVh1KP1hwW7KYYGc4Ax"
+            }
+          ]
+        },
+        "prov:hadPrimarySource": {
+          "@type": "prov:Entity",
+          "rdfs:label": "Dimensions as reported in the lab form",
+          "schema:width": {
+            "@type": "schema:QuantitativeValue",
+            "schema:value": 4.13,
+            "schema:unitCode": "MTR"
+          },
+          "schema:height": {
+            "@type": "schema:QuantitativeValue",
+            "schema:value": 2.75,
+            "schema:unitCode": "MTR"
+          },
+          "schema:depth": {
+            "@type": "schema:QuantitativeValue",
+            "schema:value": 416,
+            "schema:unitCode": "MMT"
+          }
+        }
+      }
+    },
+    "sosa:observedProperty": {
+      "@id": "ex:property/FRF-H1-velocity-per-force-3D",
+      "@type": "sosa:ObservableProperty",
+      "rdfs:label": "H1 frequency response, velocity per force, 3 components, real and imaginary"
+    },
+    "sosa:madeBySensor": {
+      "@id": "ex:sensor/SLDV-3D",
+      "@type": "sosa:Sensor",
+      "rdfs:label": "Scanning laser Doppler vibrometer (file header: Vib 3D)",
+      "dqv:hasQualityMeasurement": [
+        {
+          "@type": "dqv:QualityMeasurement",
+          "dqv:isMeasurementOf": {
+            "@id": "ldvm:modelStatus"
+          },
+          "dqv:value": "not reported"
+        }
+      ],
+      "sosa:isHostedBy": {
+        "@id": "ex:platform/Wandprüfstand",
+        "@type": "sosa:Platform",
+        "rdfs:label": "Wandprüfstand"
+      }
+    },
+    "sosa:usedProcedure": {
+      "@id": "ex:procedure/excitation",
+      "@type": "sosa:Procedure",
+      "dcterms:source": "Luftschallanregung (Lautsprecher/Rosa Rauschen)",
+      "dcterms:description": "file name contains 'Shaker'; reference channel Ref1; unit m/s per N",
+      "dqv:hasQualityMeasurement": [
+        {
+          "@type": "dqv:QualityMeasurement",
+          "dqv:isMeasurementOf": {
+            "@id": "ldvm:status"
+          },
+          "dqv:value": "unresolved"
+        }
+      ]
+    },
+    "sosa:hasResult": {
+      "@id": "ex:file/CLT10-4-3_{point}",
+      "@type": [
+        "dcat:Distribution",
+        "prov:Entity"
+      ],
+      "dcterms:title": "CLT10-4-3_Empfang-ges_Shaker____2.txt",
+      "dcat:mediaType": {
+        "@id": "https://www.iana.org/assignments/media-types/text/tab-separated-values"
+      },
+      "dcat:byteSize": {
+        "@value": 550337,
+        "@type": "xsd:nonNegativeInteger"
+      },
+      "spdx:checksum": {
+        "@type": "spdx:Checksum",
+        "spdx:algorithm": {
+          "@id": "spdx:checksumAlgorithm_sha256"
+        },
+        "spdx:checksumValue": "172bd55f49c3a3044a969b3418f0e48626750967749f8536e4a4c048efeae36d"
+      },
+      "csvw:dialect": {
+        "@type": "csvw:Dialect",
+        "csvw:delimiter": "\t",
+        "csvw:encoding": "ISO-8859-1",
+        "csvw:skipRows": 5,
+        "csvw:headerRowCount": 2
+      },
+      "csvw:tableSchema": {
+        "@type": "csvw:Schema",
+        "csvw:column": {
+          "@list": [
+            {
+              "@type": "csvw:Column",
+              "csvw:number": 1,
+              "csvw:name": "frequency",
+              "csvw:titles": {
+                "@value": "Frequenz",
+                "@language": "de"
+              },
+              "qudt:hasUnit": {
+                "@id": "unit:HZ"
+              }
+            },
+            {
+              "@type": "csvw:Column",
+              "csvw:number": 2,
+              "csvw:name": "real_x",
+              "csvw:titles": {
+                "@value": "Real X",
+                "@language": "de"
+              },
+              "schema:unitText": "m/s / N",
+              "dqv:hasQualityMeasurement": [
+                {
+                  "@type": "dqv:QualityMeasurement",
+                  "dqv:isMeasurementOf": {
+                    "@id": "ldvm:unitStatus"
+                  },
+                  "dqv:value": "QUDT IRI not yet resolved"
+                }
+              ]
+            },
+            {
+              "@type": "csvw:Column",
+              "csvw:number": 3,
+              "csvw:name": "real_y",
+              "csvw:titles": {
+                "@value": "Real Y",
+                "@language": "de"
+              },
+              "schema:unitText": "m/s / N",
+              "dqv:hasQualityMeasurement": [
+                {
+                  "@type": "dqv:QualityMeasurement",
+                  "dqv:isMeasurementOf": {
+                    "@id": "ldvm:unitStatus"
+                  },
+                  "dqv:value": "QUDT IRI not yet resolved"
+                }
+              ]
+            },
+            {
+              "@type": "csvw:Column",
+              "csvw:number": 4,
+              "csvw:name": "real_z",
+              "csvw:titles": {
+                "@value": "Real Z",
+                "@language": "de"
+              },
+              "schema:unitText": "m/s / N",
+              "dqv:hasQualityMeasurement": [
+                {
+                  "@type": "dqv:QualityMeasurement",
+                  "dqv:isMeasurementOf": {
+                    "@id": "ldvm:unitStatus"
+                  },
+                  "dqv:value": "QUDT IRI not yet resolved"
+                }
+              ]
+            },
+            {
+              "@type": "csvw:Column",
+              "csvw:number": 5,
+              "csvw:name": "imag_x",
+              "csvw:titles": {
+                "@value": "Imaginär X",
+                "@language": "de"
+              },
+              "schema:unitText": "m/s / N",
+              "dqv:hasQualityMeasurement": [
+                {
+                  "@type": "dqv:QualityMeasurement",
+                  "dqv:isMeasurementOf": {
+                    "@id": "ldvm:unitStatus"
+                  },
+                  "dqv:value": "QUDT IRI not yet resolved"
+                }
+              ]
+            },
+            {
+              "@type": "csvw:Column",
+              "csvw:number": 6,
+              "csvw:name": "imag_y",
+              "csvw:titles": {
+                "@value": "Imaginär Y",
+                "@language": "de"
+              },
+              "schema:unitText": "m/s / N",
+              "dqv:hasQualityMeasurement": [
+                {
+                  "@type": "dqv:QualityMeasurement",
+                  "dqv:isMeasurementOf": {
+                    "@id": "ldvm:unitStatus"
+                  },
+                  "dqv:value": "QUDT IRI not yet resolved"
+                }
+              ]
+            },
+            {
+              "@type": "csvw:Column",
+              "csvw:number": 7,
+              "csvw:name": "imag_z",
+              "csvw:titles": {
+                "@value": "Imaginär Z",
+                "@language": "de"
+              },
+              "schema:unitText": "m/s / N",
+              "dqv:hasQualityMeasurement": [
+                {
+                  "@type": "dqv:QualityMeasurement",
+                  "dqv:isMeasurementOf": {
+                    "@id": "ldvm:unitStatus"
+                  },
+                  "dqv:value": "QUDT IRI not yet resolved"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "prov:wasGeneratedBy": {
+        "@id": "ex:observation/CLT10-4-3_{point}"
+      },
+      "dcat:downloadURL": {
+        "@id": "data/CLT10-4-3_Empfang-ges_Shaker____2.txt"
+      },
+      "dcterms:type": {
+        "@id": "ldvc:raw"
+      }
+    },
+    "ldv:frequencyAxis": {
+      "@type": "schema:QuantitativeValue",
+      "schema:minValue": 20,
+      "schema:maxValue": 6400,
+      "ldv:step": 1,
+      "ldv:binCount": 6381,
+      "qudt:hasUnit": {
+        "@id": "unit:HZ"
+      }
+    },
+    "dcterms:temporal": {
+      "@type": "dcterms:PeriodOfTime",
+      "dcat:startDate": {
+        "@value": "2024",
+        "@type": "xsd:gYear"
+      },
+      "dcat:endDate": {
+        "@value": "2025",
+        "@type": "xsd:gYear"
+      },
+      "rdfs:comment": "Reported as 2024/2025 in the lab form; exact date unknown"
+    },
+    "prov:wasAssociatedWith": {
+      "@id": "ex:agent/lab-lead"
+    },
+    "prov:atLocation": {
+      "@id": "ex:location/ZFB-HfT-Stuttgart",
+      "@type": "prov:Location",
+      "rdfs:label": "ZFB der HfT Stuttgart"
+    },
+    "dcterms:references": {
+      "@id": "data/CLT_Wand_PSV_messungen_skizze.png",
+      "rdfs:label": "Measurement set-up sketch named in the lab form",
+      "rdfs:comment": "file not supplied"
+    },
+    "prov:used": [
+      {
+        "@type": [
+          "qudt:QuantityValue",
+          "ssn-system:Condition"
+        ],
+        "rdfs:label": "air temperature",
+        "qudt:numericValue": 20.2,
+        "qudt:hasUnit": {
+          "@id": "unit:DEG_C"
+        }
+      },
+      {
+        "@type": [
+          "qudt:QuantityValue",
+          "ssn-system:Condition"
+        ],
+        "rdfs:label": "relative humidity",
+        "qudt:numericValue": 27.3,
+        "qudt:hasUnit": {
+          "@id": "unit:PERCENT"
+        }
+      },
+      {
+        "@type": [
+          "qudt:QuantityValue",
+          "ssn-system:Condition"
+        ],
+        "rdfs:label": "air pressure",
+        "qudt:numericValue": 974.6,
+        "qudt:hasUnit": {
+          "@id": "unit:HectoPA"
+        }
+      }
+    ]
+  },
+  "dcterms:relation": {
+    "@id": "ex:binding/CLT10-4-3_{point}",
+    "@type": "ls:DirectedLink",
+    "ls:hasFromLinkElement": {
+      "@type": "ls:LinkElement",
+      "ls:hasDocument": {
+        "@id": "ex:record/CLT10-4-3_{point}"
+      },
+      "ls:hasIdentifier": {
+        "@type": "ls:UriBasedIdentifier",
+        "ls:uri": {
+          "@value": "https://example.org/ldv/id/point/CLT10-4-3_{point}",
+          "@type": "xsd:anyURI"
+        }
+      }
+    },
+    "ls:hasToLinkElement": [
+      {
+        "@type": "ls:LinkElement",
+        "ls:hasDocument": {
+          "@id": "ex:ifcfile/Zublin_Wall_02",
+          "@type": [
+            "dcat:Distribution",
+            "prov:Entity"
+          ],
+          "dcterms:title": "Zublin Wall_02.ifc",
+          "dcterms:modified": {
+            "@value": "2025-11-09T20:39:27+01:00",
+            "@type": "xsd:dateTime"
+          },
+          "spdx:checksum": {
+            "@type": "spdx:Checksum",
+            "spdx:algorithm": {
+              "@id": "spdx:checksumAlgorithm_sha256"
+            },
+            "spdx:checksumValue": "59fcf6f89f2861a69237b4d2e0b372ba1bd4bc2914bc468a7201bd2b900d680f"
+          },
+          "dcat:downloadURL": {
+            "@id": "data/Zublin_Wall_02.ifc"
+          },
+          "dcterms:conformsTo": {
+            "@id": "https://standards.buildingsmart.org/IFC/DEV/IFC4_3/ADD2",
+            "rdfs:label": "IFC4X3_ADD2"
+          }
+        },
+        "ls:hasIdentifier": {
+          "@type": "ls:StringBasedIdentifier",
+          "ls:identifierField": "Guid",
+          "ls:identifier": "2$jyVh1KP1hwW7KYYGc4As"
+        }
+      },
+      {
+        "@type": "ls:LinkElement",
+        "ls:hasDocument": {
+          "@id": "ex:ifcfile/Zublin_Wall_02"
+        },
+        "ls:hasIdentifier": {
+          "@type": "ls:StringBasedIdentifier",
+          "ls:identifierField": "Guid",
+          "ls:identifier": "2$jyVh1KP1hwW7KYYGc4Av"
+        }
+      },
+      {
+        "@type": "ls:LinkElement",
+        "ls:hasDocument": {
+          "@id": "ex:ifcfile/Zublin_Wall_02"
+        },
+        "ls:hasIdentifier": {
+          "@type": "ls:StringBasedIdentifier",
+          "ls:identifierField": "Guid",
+          "ls:identifier": "2$jyVh1KP1hwW7KYYGc4Au"
+        }
+      },
+      {
+        "@type": "ls:LinkElement",
+        "ls:hasDocument": {
+          "@id": "ex:ifcfile/Zublin_Wall_02"
+        },
+        "ls:hasIdentifier": {
+          "@type": "ls:StringBasedIdentifier",
+          "ls:identifierField": "Guid",
+          "ls:identifier": "2$jyVh1KP1hwW7KYYGc4Ax"
+        }
+      },
+      {
+        "@type": "ls:LinkElement",
+        "ls:hasDocument": {
+          "@id": "ex:ifcfile/Zublin_Wall_02"
+        },
+        "ls:hasIdentifier": {
+          "@type": "ls:StringBasedIdentifier",
+          "ls:identifierField": "Guid",
+          "ls:identifier": "0FK4_3Dy1BFBjBaa$LdXAw"
+        }
+      },
+      {
+        "@type": "ls:LinkElement",
+        "ls:hasDocument": {
+          "@id": "ex:ifcfile/Zublin_Wall_02"
+        },
+        "ls:hasIdentifier": {
+          "@type": "ls:StringBasedIdentifier",
+          "ls:identifierField": "Guid",
+          "ls:identifier": "0FK4_3Dy1BFBjBaa$LdXAr"
+        }
+      }
+    ],
+    "ldv:associationLevel": "component",
+    "ldv:registration": "not established",
+    "prov:wasGeneratedBy": {
+      "@type": "prov:Activity",
+      "prov:endedAtTime": {
+        "@value": "2026-10-25T23:53:05+00:00",
+        "@type": "xsd:dateTime"
+      },
+      "prov:used": {
+        "@id": "ex:plan/element-fingerprint",
+        "@type": "prov:Plan",
+        "dcterms:description": "sha256 of 'GlobalId|IFC class|material name|bbox min|bbox max' (world coordinates, metres, 3 decimals)"
+      }
+    },
+    "dqv:hasQualityMeasurement": [
+      {
+        "@type": "dqv:QualityMeasurement",
+        "dqv:isMeasurementOf": {
+          "@id": "ldvm:bindingStatus"
+        },
+        "dqv:value": "valid"
+      }
+    ]
+  },
+  "dqv:hasQualityMeasurement": [
+    {
+      "@type": "dqv:QualityMeasurement",
+      "dqv:isMeasurementOf": {
+        "@id": "ldvm:absentFields"
+      },
+      "dqv:value": [
+        "persistentIdentifier",
+        "accessURL",
+        "licence",
+        "exactDate",
+        "instrumentModel",
+        "samplingAndAveraging",
+        "coherence",
+        "scanGridAndPointCount",
+        "registrationTransform",
+        "ifcElementFingerprint",
+        "measuredFace"
+      ]
+    },
+    {
+      "@type": "dqv:QualityMeasurement",
+      "dqv:isMeasurementOf": {
+        "@id": "ldvm:unresolvedFields"
+      },
+      "dqv:value": [
+        "excitationType",
+        "coordinateUnit",
+        "scanFrameDefinition",
+        "velocityPerForceUnitIRI"
+      ]
+    }
+  ],
+  "dcterms:creator": {
+    "@id": "ex:agent/lab-lead",
+    "@type": "prov:Agent",
+    "rdfs:label": "Peter Perivoitos"
+  }
+}

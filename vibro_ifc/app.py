@@ -7,6 +7,7 @@ from vibro_ifc import pages
 
 NAV = {
     "Overview": pages.render_overview,
+    "Build from new data": pages.render_build,
     "Sidecar v0.6": pages.render_sidecar_v06,
     "All records": pages.render_records,
     "Method and scope": pages.render_method,
@@ -19,4 +20,7 @@ def run() -> None:
         st.markdown("## VIBRO-IFC")
         st.caption("SLDV measurements linked to IFC")
         choice = st.radio("Page", list(NAV), label_visibility="collapsed")
+        if st.session_state.get("build"):
+            st.divider()
+            st.toggle("Show my last build", key="use_build", help="Switch the Sidecar and Records pages between the repository records and your build.")
     NAV[choice]()
