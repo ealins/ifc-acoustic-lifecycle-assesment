@@ -1,0 +1,222 @@
+{
+  "@context": {
+    "sosa": "http://www.w3.org/ns/sosa/",
+    "prov": "http://www.w3.org/ns/prov#",
+    "dcat": "http://www.w3.org/ns/dcat#",
+    "dcterms": "http://purl.org/dc/terms/",
+    "csvw": "http://www.w3.org/ns/csvw#",
+    "spdx": "http://spdx.org/rdf/terms#",
+    "qudt": "http://qudt.org/schema/qudt/",
+    "unit": "http://qudt.org/vocab/unit/",
+    "bot": "https://w3id.org/bot#",
+    "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+    "ldv": "https://example.org/ldv/profile#",
+    "ex": "https://example.org/ldv/id/",
+    "xsd": "http://www.w3.org/2001/XMLSchema#",
+    "@base": "https://example.org/ldv/package/",
+    "owl": "http://www.w3.org/2002/07/owl#",
+    "foaf": "http://xmlns.com/foaf/0.1/",
+    "dqv": "http://www.w3.org/ns/dqv#",
+    "geo": "http://www.opengis.net/ont/geosparql#",
+    "schema": "https://schema.org/",
+    "skos": "http://www.w3.org/2004/02/skos/core#",
+    "ls": "https://standards.iso.org/iso/21597/-1/ed-1/en/Linkset#",
+    "ifc": "https://standards.buildingsmart.org/IFC/DEV/IFC4/ADD2_TC1/OWL#",
+    "ssn-system": "http://www.w3.org/ns/ssn/systems/",
+    "ldvc": "https://example.org/ldv/concept/",
+    "ldvm": "https://example.org/ldv/metric/"
+  },
+  "@id": "ex:scan/CLT1043receivingroomwall",
+  "@type": [
+    "dcat:Dataset",
+    "sosa:ObservationCollection"
+  ],
+  "dcterms:title": "CLT10-4-3 receiving-room wall: points supplied",
+  "dcterms:description": "Index of the 20 point records built from data. Treating these files as one dataset is an assumption to confirm.",
+  "sosa:hasMember": [
+    {
+      "@id": "ex:observation/CLT10-4-3_point-0001"
+    },
+    {
+      "@id": "ex:observation/CLT10-4-3_point-0002"
+    },
+    {
+      "@id": "ex:observation/CLT10-4-3_point-0003"
+    },
+    {
+      "@id": "ex:observation/CLT10-4-3_point-0004"
+    },
+    {
+      "@id": "ex:observation/CLT10-4-3_point-0005"
+    },
+    {
+      "@id": "ex:observation/CLT10-4-3_point-0006"
+    },
+    {
+      "@id": "ex:observation/CLT10-4-3_point-0007"
+    },
+    {
+      "@id": "ex:observation/CLT10-4-3_point-0008"
+    },
+    {
+      "@id": "ex:observation/CLT10-4-3_point-0009"
+    },
+    {
+      "@id": "ex:observation/CLT10-4-3_point-0087"
+    },
+    {
+      "@id": "ex:observation/CLT10-4-3_point-0088"
+    },
+    {
+      "@id": "ex:observation/CLT10-4-3_point-0089"
+    },
+    {
+      "@id": "ex:observation/CLT10-4-3_point-0090"
+    },
+    {
+      "@id": "ex:observation/CLT10-4-3_point-0091"
+    },
+    {
+      "@id": "ex:observation/CLT10-4-3_point-0094"
+    },
+    {
+      "@id": "ex:observation/CLT10-4-3_point-0095"
+    },
+    {
+      "@id": "ex:observation/CLT10-4-3_point-0096"
+    },
+    {
+      "@id": "ex:observation/CLT10-4-3_point-0097"
+    },
+    {
+      "@id": "ex:observation/CLT10-4-3_point-0098"
+    },
+    {
+      "@id": "ex:observation/CLT10-4-3_point-0099"
+    }
+  ],
+  "dcterms:hasPart": [
+    {
+      "@id": "ex:file/CLT10-4-3_point-0001"
+    },
+    {
+      "@id": "ex:file/CLT10-4-3_point-0002"
+    },
+    {
+      "@id": "ex:file/CLT10-4-3_point-0003"
+    },
+    {
+      "@id": "ex:file/CLT10-4-3_point-0004"
+    },
+    {
+      "@id": "ex:file/CLT10-4-3_point-0005"
+    },
+    {
+      "@id": "ex:file/CLT10-4-3_point-0006"
+    },
+    {
+      "@id": "ex:file/CLT10-4-3_point-0007"
+    },
+    {
+      "@id": "ex:file/CLT10-4-3_point-0008"
+    },
+    {
+      "@id": "ex:file/CLT10-4-3_point-0009"
+    },
+    {
+      "@id": "ex:file/CLT10-4-3_point-0087"
+    },
+    {
+      "@id": "ex:file/CLT10-4-3_point-0088"
+    },
+    {
+      "@id": "ex:file/CLT10-4-3_point-0089"
+    },
+    {
+      "@id": "ex:file/CLT10-4-3_point-0090"
+    },
+    {
+      "@id": "ex:file/CLT10-4-3_point-0091"
+    },
+    {
+      "@id": "ex:file/CLT10-4-3_point-0094"
+    },
+    {
+      "@id": "ex:file/CLT10-4-3_point-0095"
+    },
+    {
+      "@id": "ex:file/CLT10-4-3_point-0096"
+    },
+    {
+      "@id": "ex:file/CLT10-4-3_point-0097"
+    },
+    {
+      "@id": "ex:file/CLT10-4-3_point-0098"
+    },
+    {
+      "@id": "ex:file/CLT10-4-3_point-0099"
+    }
+  ],
+  "rdfs:seeAlso": [
+    {
+      "@id": "metadata/points/point_0001.jsonld"
+    },
+    {
+      "@id": "metadata/points/point_0002.jsonld"
+    },
+    {
+      "@id": "metadata/points/point_0003.jsonld"
+    },
+    {
+      "@id": "metadata/points/point_0004.jsonld"
+    },
+    {
+      "@id": "metadata/points/point_0005.jsonld"
+    },
+    {
+      "@id": "metadata/points/point_0006.jsonld"
+    },
+    {
+      "@id": "metadata/points/point_0007.jsonld"
+    },
+    {
+      "@id": "metadata/points/point_0008.jsonld"
+    },
+    {
+      "@id": "metadata/points/point_0009.jsonld"
+    },
+    {
+      "@id": "metadata/points/point_0087.jsonld"
+    },
+    {
+      "@id": "metadata/points/point_0088.jsonld"
+    },
+    {
+      "@id": "metadata/points/point_0089.jsonld"
+    },
+    {
+      "@id": "metadata/points/point_0090.jsonld"
+    },
+    {
+      "@id": "metadata/points/point_0091.jsonld"
+    },
+    {
+      "@id": "metadata/points/point_0094.jsonld"
+    },
+    {
+      "@id": "metadata/points/point_0095.jsonld"
+    },
+    {
+      "@id": "metadata/points/point_0096.jsonld"
+    },
+    {
+      "@id": "metadata/points/point_0097.jsonld"
+    },
+    {
+      "@id": "metadata/points/point_0098.jsonld"
+    },
+    {
+      "@id": "metadata/points/point_0099.jsonld"
+    }
+  ]
+}

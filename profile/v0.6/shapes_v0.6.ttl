@@ -1,0 +1,213 @@
+@prefix sh:      <http://www.w3.org/ns/shacl#> .
+@prefix owl:     <http://www.w3.org/2002/07/owl#> .
+@prefix xsd:     <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdf:     <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:    <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix dcat:    <http://www.w3.org/ns/dcat#> .
+@prefix csvw:    <http://www.w3.org/ns/csvw#> .
+@prefix spdx:    <http://spdx.org/rdf/terms#> .
+@prefix qudt:    <http://qudt.org/schema/qudt/> .
+@prefix sosa:    <http://www.w3.org/ns/sosa/> .
+@prefix prov:    <http://www.w3.org/ns/prov#> .
+@prefix bot:     <https://w3id.org/bot#> .
+@prefix foaf:    <http://xmlns.com/foaf/0.1/> .
+@prefix dqv:     <http://www.w3.org/ns/dqv#> .
+@prefix geo:     <http://www.opengis.net/ont/geosparql#> .
+@prefix schema:  <https://schema.org/> .
+@prefix skos:    <http://www.w3.org/2004/02/skos/core#> .
+@prefix ls:      <https://standards.iso.org/iso/21597/-1/ed-1/en/Linkset#> .
+@prefix ifc:     <https://standards.buildingsmart.org/IFC/DEV/IFC4/ADD2_TC1/OWL#> .
+@prefix ldv:     <https://example.org/ldv/profile#> .
+@prefix ldvc:    <https://example.org/ldv/concept/> .
+@prefix ldvm:    <https://example.org/ldv/metric/> .
+@prefix ldvs:    <https://example.org/ldv/shapes#> .
+
+# Profile v0.6: the record is expressed with existing vocabularies; ldv: keeps only
+#   RegistrationHypothesis, transform, referenceFace, registration, associationLevel, frequencyAxis, step, binCount.
+# Convention: Violation = mandatory, Warning = recommended / known gap.  sh:description names the RDA FAIR indicator a rule serves.
+# Status values are SKOS-style concepts (ldvc:) and DQV metrics (ldvm:), not new properties.
+
+# ---------- record (DCAT catalog record about the observation) ----------
+ldvs:RecordShape a sh:NodeShape ; sh:targetClass dcat:CatalogRecord ;
+  sh:property [ sh:path dcterms:conformsTo ; sh:minCount 1 ; sh:nodeKind sh:IRI ; sh:message "Record must name the profile it conforms to." ] ;
+  sh:property [ sh:path owl:versionInfo ; sh:minCount 1 ; sh:message "Record must state its profile version." ] ;
+  sh:property [ sh:path dcterms:creator ; sh:minCount 1 ; sh:nodeKind sh:IRI ; sh:message "Record must name a creator (agent IRI)." ] ;
+  sh:property [ sh:path dcterms:identifier ; sh:minCount 1 ; sh:description "RDA F1-01M, F1-02M" ; sh:message "Persistent identifier missing (F1)." ] ;
+  sh:property [ sh:path dcterms:license ; sh:minCount 1 ; sh:description "RDA R1.1-01M" ; sh:message "Licence missing (R1.1)." ] ;
+  sh:property [ sh:path foaf:primaryTopic ; sh:minCount 1 ; sh:maxCount 1 ; sh:class sosa:Observation ; sh:message "Record needs exactly one sosa:Observation as primary topic." ] ;
+  sh:property [ sh:path dcterms:relation ; sh:minCount 1 ; sh:maxCount 1 ; sh:class ls:DirectedLink ; sh:message "Record needs its binding (ls:DirectedLink)." ] ;
+  sh:property [ sh:path dqv:hasQualityMeasurement ; sh:minCount 1 ; sh:message "Record must carry a completeness report (DQV measurements)." ] ;
+  sh:sparql [ a sh:SPARQLConstraint ; sh:message "Completeness report needs both the absentFields and the unresolvedFields measurement." ;
+    sh:select """SELECT $this WHERE { FILTER NOT EXISTS { $this <http://www.w3.org/ns/dqv#hasQualityMeasurement>/<http://www.w3.org/ns/dqv#isMeasurementOf> <https://example.org/ldv/metric/absentFields> }
+                                      FILTER NOT EXISTS { $this <http://www.w3.org/ns/dqv#hasQualityMeasurement>/<http://www.w3.org/ns/dqv#isMeasurementOf> <https://example.org/ldv/metric/unresolvedFields> } }""" ] .
+
+ldvs:QualityMeasurementShape a sh:NodeShape ; sh:targetClass dqv:QualityMeasurement ;
+  sh:property [ sh:path dqv:isMeasurementOf ; sh:minCount 1 ; sh:maxCount 1 ; sh:nodeKind sh:IRI ] .
+
+# ---------- payload: the result of the observation ----------
+ldvs:DistributionShape a sh:NodeShape ; sh:targetObjectsOf sosa:hasResult ;
+  sh:property [ sh:path dcat:mediaType ; sh:minCount 1 ; sh:nodeKind sh:IRI ; sh:message "Media type must be given as an IRI." ] ;
+  sh:property [ sh:path dcat:byteSize ; sh:minCount 1 ; sh:datatype xsd:nonNegativeInteger ; sh:message "byteSize must be an xsd:nonNegativeInteger." ] ;
+  sh:property [ sh:path spdx:checksum ; sh:minCount 1 ; sh:node ldvs:ChecksumShape ; sh:message "File needs a checksum node." ] ;
+  sh:property [ sh:path csvw:dialect ; sh:minCount 1 ; sh:node ldvs:DialectShape ] ;
+  sh:property [ sh:path csvw:tableSchema ; sh:minCount 1 ; sh:node ldvs:SchemaShape ] ;
+  sh:property [ sh:path dcterms:type ; sh:minCount 1 ; sh:in ( ldvc:raw ldvc:derived ) ; sh:message "dcterms:type must be ldvc:raw or ldvc:derived." ] ;
+  sh:property [ sh:path dcat:accessURL ; sh:minCount 1 ; sh:severity sh:Warning ; sh:description "RDA A1-01M" ; sh:message "No access URL recorded (A1)." ] .
+
+ldvs:ChecksumShape a sh:NodeShape ;
+  sh:property [ sh:path spdx:algorithm ; sh:minCount 1 ; sh:nodeKind sh:IRI ] ;
+  sh:property [ sh:path spdx:checksumValue ; sh:minCount 1 ; sh:pattern "^[0-9a-f]{64}$" ; sh:message "Checksum must be 64 lowercase hex characters (SHA-256)." ] .
+
+ldvs:DialectShape a sh:NodeShape ;
+  sh:property [ sh:path csvw:delimiter ; sh:minCount 1 ] ;
+  sh:property [ sh:path csvw:encoding ; sh:minCount 1 ] ;
+  sh:property [ sh:path csvw:skipRows ; sh:datatype xsd:integer ] ;
+  sh:property [ sh:path csvw:headerRowCount ; sh:datatype xsd:integer ] .
+
+ldvs:SchemaShape a sh:NodeShape ;
+  sh:property [ sh:path csvw:column ; sh:minCount 1 ; sh:maxCount 1 ; sh:message "Columns must be one ordered @list, not an unordered set." ] ;
+  sh:property [ sh:path ( csvw:column [ sh:zeroOrMorePath rdf:rest ] rdf:first ) ; sh:class csvw:Column ; sh:node ldvs:ColumnShape ] .
+
+ldvs:ColumnShape a sh:NodeShape ;
+  sh:property [ sh:path csvw:number ; sh:minCount 1 ; sh:datatype xsd:integer ] ;
+  sh:property [ sh:path csvw:name   ; sh:minCount 1 ] ;
+  sh:property [ sh:path csvw:titles ; sh:minCount 1 ] ;
+  sh:or ( [ sh:property [ sh:path qudt:hasUnit ; sh:minCount 1 ] ] [ sh:property [ sh:path schema:unitText ; sh:minCount 1 ] ] ) .
+
+# ---------- observation (SOSA) ----------
+ldvs:ObservationShape a sh:NodeShape ; sh:targetClass sosa:Observation ;
+  sh:property [ sh:path sosa:hasFeatureOfInterest ; sh:minCount 1 ; sh:maxCount 1 ; sh:class sosa:Sample ; sh:node ldvs:SampleShape ] ;
+  sh:property [ sh:path sosa:observedProperty ; sh:minCount 1 ; sh:nodeKind sh:IRI ] ;
+  sh:property [ sh:path sosa:madeBySensor ; sh:minCount 1 ; sh:nodeKind sh:IRI ] ;
+  sh:property [ sh:path sosa:usedProcedure ; sh:minCount 1 ; sh:nodeKind sh:IRI ] ;
+  sh:property [ sh:path sosa:hasResult ; sh:minCount 1 ; sh:nodeKind sh:IRI ] ;
+  sh:property [ sh:path prov:wasAssociatedWith ; sh:minCount 1 ; sh:nodeKind sh:IRI ; sh:description "RDA R1.2-01M" ] ;
+  sh:property [ sh:path ldv:frequencyAxis ; sh:minCount 1 ] ;
+  sh:property [ sh:path sosa:resultTime ; sh:minCount 1 ; sh:severity sh:Warning ; sh:message "Exact measurement date (sosa:resultTime) not recorded." ] ;
+  sh:property [ sh:path prov:atLocation ; sh:minCount 1 ; sh:severity sh:Warning ] .
+
+ldvs:SampleShape a sh:NodeShape ;
+  sh:property [ sh:path dcterms:identifier ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:integer ; sh:message "Scan point needs its integer index (dcterms:identifier)." ] ;
+  sh:property [ sh:path geo:hasGeometry ; sh:minCount 1 ; sh:maxCount 1 ; sh:node ldvs:PointGeometryShape ] ;
+  sh:property [ sh:path sosa:isSampleOf ; sh:minCount 1 ; sh:maxCount 1 ; sh:nodeKind sh:IRI ] .
+
+ldvs:PointGeometryShape a sh:NodeShape ;
+  sh:property [ sh:path geo:asWKT ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype geo:wktLiteral ;
+      sh:pattern "^<[^>]+>\\s*POINT\\s*Z\\s*\\(\\s*[-+0-9.eE]+\\s+[-+0-9.eE]+\\s+[-+0-9.eE]+\\s*\\)\\s*$" ;
+      sh:message "Point must be 'POINT Z (x y z)' prefixed by the IRI of the scan frame (GeoSPARQL 1.1)." ] .
+
+ldvs:FrequencyAxisShape a sh:NodeShape ; sh:targetObjectsOf ldv:frequencyAxis ;
+  sh:property [ sh:path schema:minValue ; sh:minCount 1 ] ;
+  sh:property [ sh:path schema:maxValue ; sh:minCount 1 ] ;
+  sh:property [ sh:path ldv:step ; sh:minCount 1 ] ;
+  sh:property [ sh:path ldv:binCount ; sh:minCount 1 ] ;
+  sh:property [ sh:path qudt:hasUnit ; sh:minCount 1 ; sh:nodeKind sh:IRI ] ;
+  sh:sparql [ a sh:SPARQLConstraint ; sh:message "binCount does not equal (max - min) / step + 1." ;
+    sh:select """SELECT $this ?v WHERE {
+      $this <https://schema.org/minValue> ?mn ; <https://schema.org/maxValue> ?mx ;
+            <https://example.org/ldv/profile#step> ?st ; <https://example.org/ldv/profile#binCount> ?v .
+      FILTER (?v != ((?mx - ?mn) / ?st + 1)) }""" ] .
+
+ldvs:ProcedureOpenItemShape a sh:NodeShape ; sh:targetClass sosa:Procedure ; sh:severity sh:Warning ;
+  sh:sparql [ a sh:SPARQLConstraint ; sh:message "Excitation type is unresolved (lab form and file disagree)." ;
+    sh:select """SELECT $this WHERE { $this <http://www.w3.org/ns/dqv#hasQualityMeasurement> ?m .
+      ?m <http://www.w3.org/ns/dqv#isMeasurementOf> <https://example.org/ldv/metric/status> ; <http://www.w3.org/ns/dqv#value> "unresolved" }""" ] .
+
+ldvs:ProcedureShape a sh:NodeShape ; sh:targetClass sosa:Procedure ;
+  sh:sparql [ a sh:SPARQLConstraint ; sh:message "Procedure is marked unresolved but 'excitationType' is not in the unresolvedFields measurement." ;
+    sh:select """SELECT $this WHERE {
+      $this <http://www.w3.org/ns/dqv#hasQualityMeasurement> ?m .
+      ?m <http://www.w3.org/ns/dqv#isMeasurementOf> <https://example.org/ldv/metric/status> ; <http://www.w3.org/ns/dqv#value> "unresolved" .
+      FILTER NOT EXISTS { ?c <http://www.w3.org/ns/dqv#isMeasurementOf> <https://example.org/ldv/metric/unresolvedFields> ; <http://www.w3.org/ns/dqv#value> "excitationType" } }""" ] .
+
+ldvs:QuantityValueShape a sh:NodeShape ; sh:targetClass qudt:QuantityValue ;
+  sh:property [ sh:path qudt:numericValue ; sh:minCount 1 ; sh:datatype xsd:double ] ;
+  sh:property [ sh:path qudt:hasUnit ; sh:minCount 1 ; sh:nodeKind sh:IRI ] .
+
+# ---------- BIM side: specimen, elements, layers ----------
+ldvs:ElementShape a sh:NodeShape ; sh:targetClass bot:Element ;
+  sh:property [ sh:path dcterms:identifier ; sh:maxCount 1 ; sh:pattern "^[0-9A-Za-z_$]{22}$" ; sh:message "IFC GlobalId (dcterms:identifier) must be 22 characters from [0-9A-Za-z_$]." ] ;
+  sh:property [ sh:path spdx:checksum ; sh:maxCount 1 ; sh:node ldvs:ChecksumShape ] ;
+  sh:sparql [ a sh:SPARQLConstraint ; sh:message "Bound IFC element (has a GlobalId) needs an element fingerprint (spdx:checksum)." ;
+    sh:select """SELECT $this WHERE { $this <http://purl.org/dc/terms/identifier> ?g . FILTER NOT EXISTS { $this <http://spdx.org/rdf/terms#checksum> ?c } }""" ] .
+
+ldvs:MaterialLayerShape a sh:NodeShape ; sh:targetClass ifc:IfcMaterialLayer ;
+  sh:property [ sh:path rdfs:label ; sh:minCount 1 ] ;
+  sh:property [ sh:path schema:depth ; sh:minCount 1 ; sh:maxCount 1 ; sh:node ldvs:QuantitativeValueShape ] .
+
+ldvs:QuantitativeValueShape a sh:NodeShape ;
+  sh:property [ sh:path schema:value ; sh:minCount 1 ; sh:datatype xsd:double ] ;
+  sh:property [ sh:path schema:unitCode ; sh:minCount 1 ] .
+
+ldvs:LayerListShape a sh:NodeShape ; sh:targetSubjectsOf dcterms:hasPart ;
+  sh:property [ sh:path dcterms:hasPart ; sh:maxCount 1 ; sh:message "Layer stack must be one ordered @list." ] ;
+  sh:sparql [ a sh:SPARQLConstraint ; sh:message "Layer list contains an entry that is neither a sub-element of the wall nor an ifc:IfcMaterialLayer." ;
+    sh:select """SELECT $this ?m WHERE {
+      $this <http://purl.org/dc/terms/hasPart>/<http://www.w3.org/1999/02/22-rdf-syntax-ns#rest>*/<http://www.w3.org/1999/02/22-rdf-syntax-ns#first> ?m .
+      FILTER NOT EXISTS { $this <https://w3id.org/bot#hasSubElement> ?m }
+      FILTER NOT EXISTS { ?m a <https://standards.buildingsmart.org/IFC/DEV/IFC4/ADD2_TC1/OWL#IfcMaterialLayer> } }""" ] .
+
+# ---------- binding: ICDD-style directed link ----------
+ldvs:BindingShape a sh:NodeShape ; sh:targetClass ls:DirectedLink ;
+  sh:property [ sh:path ls:hasFromLinkElement ; sh:minCount 1 ; sh:maxCount 1 ] ;
+  sh:property [ sh:path ls:hasToLinkElement ; sh:minCount 1 ] ;
+  sh:property [ sh:path ldv:associationLevel ; sh:minCount 1 ; sh:in ( "none" "component" "surface" "point" ) ] ;
+  sh:property [ sh:path ldv:registration ; sh:minCount 1 ] ;
+  sh:property [ sh:path prov:wasGeneratedBy ; sh:minCount 1 ; sh:maxCount 1 ; sh:node ldvs:VerificationShape ; sh:message "Binding needs the verification activity that produced its fingerprints." ] ;
+  sh:sparql [ a sh:SPARQLConstraint ; sh:message "Binding needs a bindingStatus measurement: valid, stale or unknown." ;
+    sh:select """SELECT $this WHERE { FILTER NOT EXISTS { $this <http://www.w3.org/ns/dqv#hasQualityMeasurement> ?m .
+      ?m <http://www.w3.org/ns/dqv#isMeasurementOf> <https://example.org/ldv/metric/bindingStatus> ; <http://www.w3.org/ns/dqv#value> ?v . FILTER (?v IN ("valid","stale","unknown")) } }""" ] ;
+  sh:sparql [ a sh:SPARQLConstraint ; sh:message "An element of the specimen has a GlobalId that no link element of this binding names." ;
+    sh:select """SELECT $this ?gid WHERE {
+      ?el a <https://w3id.org/bot#Element> ; <http://purl.org/dc/terms/identifier> ?gid ; <http://spdx.org/rdf/terms#checksum> ?c .
+      FILTER NOT EXISTS { $this <https://standards.iso.org/iso/21597/-1/ed-1/en/Linkset#hasToLinkElement>/<https://standards.iso.org/iso/21597/-1/ed-1/en/Linkset#hasIdentifier>/<https://standards.iso.org/iso/21597/-1/ed-1/en/Linkset#identifier> ?gid } }""" ] .
+
+ldvs:VerificationShape a sh:NodeShape ;
+  sh:property [ sh:path prov:endedAtTime ; sh:minCount 1 ; sh:datatype xsd:dateTime ; sh:message "Binding needs the time it was last verified." ] ;
+  sh:property [ sh:path prov:used ; sh:minCount 1 ; sh:class prov:Plan ; sh:node ldvs:PlanShape ] .
+ldvs:PlanShape a sh:NodeShape ;
+  sh:property [ sh:path dcterms:description ; sh:minCount 1 ; sh:message "Binding must state how element fingerprints are computed." ] .
+
+ldvs:LinkElementShape a sh:NodeShape ; sh:targetClass ls:LinkElement ;
+  sh:property [ sh:path ls:hasDocument ; sh:minCount 1 ; sh:maxCount 1 ; sh:nodeKind sh:IRI ] ;
+  sh:property [ sh:path ls:hasIdentifier ; sh:maxCount 1 ] .
+
+ldvs:StringIdentifierShape a sh:NodeShape ; sh:targetClass ls:StringBasedIdentifier ;
+  sh:property [ sh:path ls:identifier ; sh:minCount 1 ; sh:pattern "^[0-9A-Za-z_$]{22}$" ] ;
+  sh:property [ sh:path ls:identifierField ; sh:minCount 1 ] .
+
+ldvs:IfcDocumentShape a sh:NodeShape ; sh:targetObjectsOf ls:hasDocument ;
+  sh:property [ sh:path spdx:checksum ; sh:maxCount 1 ; sh:node ldvs:ChecksumShape ] ;
+  sh:sparql [ a sh:SPARQLConstraint ; sh:message "A document that carries a download URL needs a checksum and a modification time." ;
+    sh:select """SELECT $this WHERE { $this <http://www.w3.org/ns/dcat#downloadURL> ?u .
+      FILTER (NOT EXISTS { $this <http://spdx.org/rdf/terms#checksum> ?c } || NOT EXISTS { $this <http://purl.org/dc/terms/modified> ?m } ) FILTER NOT EXISTS { $this a <http://www.w3.org/ns/dcat#CatalogRecord> } }""" ] .
+
+# ---------- conditional / cross-field rules ----------
+ldvs:BindingConditionalShape a sh:NodeShape ; sh:targetClass ls:DirectedLink ;
+  sh:sparql [ a sh:SPARQLConstraint ; sh:message "Surface or point association requires an ldv:transform on the registration hypothesis." ;
+    sh:select """SELECT $this WHERE {
+      $this <https://example.org/ldv/profile#associationLevel> ?l . FILTER (?l IN ("surface","point"))
+      FILTER NOT EXISTS { $this <http://www.w3.org/ns/prov#wasInfluencedBy>/<https://example.org/ldv/profile#transform> ?t } }""" ] ;
+  sh:sparql [ a sh:SPARQLConstraint ; sh:message "Surface or point association is not allowed while registration is 'not established'." ;
+    sh:select """SELECT $this WHERE {
+      $this <https://example.org/ldv/profile#associationLevel> ?l ; <https://example.org/ldv/profile#registration> "not established" .
+      FILTER (?l IN ("surface","point")) }""" ] ;
+  sh:sparql [ a sh:SPARQLConstraint ; sh:message "Surface or point association is not allowed while the scan frame definition is absent." ;
+    sh:select """SELECT $this WHERE {
+      $this <https://example.org/ldv/profile#associationLevel> ?l . FILTER (?l IN ("surface","point"))
+      ?o <http://www.w3.org/ns/sosa/hasFeatureOfInterest>/<http://www.opengis.net/ont/geosparql#hasGeometry>/<http://www.w3.org/ns/dqv#hasQualityMeasurement> ?m .
+      ?m <http://www.w3.org/ns/dqv#isMeasurementOf> <https://example.org/ldv/metric/definitionStatus> ; <http://www.w3.org/ns/dqv#value> "absent" }""" ] .
+
+ldvs:DerivedDataShape a sh:NodeShape ; sh:targetObjectsOf sosa:hasResult ;
+  sh:sparql [ a sh:SPARQLConstraint ; sh:message "Data marked ldvc:derived must name its source (prov:wasDerivedFrom)." ;
+    sh:select """SELECT $this WHERE { $this <http://purl.org/dc/terms/type> <https://example.org/ldv/concept/derived> .
+      FILTER NOT EXISTS { $this <http://www.w3.org/ns/prov#wasDerivedFrom> ?s } }""" ] .
+
+ldvs:RegistrationHypothesisShape a sh:NodeShape ; sh:targetClass ldv:RegistrationHypothesis ;
+  sh:property [ sh:path dcterms:source ; sh:minCount 1 ] ;
+  sh:property [ sh:path ldv:transform ; sh:minCount 1 ] ;
+  sh:sparql [ a sh:SPARQLConstraint ; sh:message "Hypothesis needs a status measurement: 'declared by model; not confirmed by lab', 'declared in project.json; not confirmed by lab', 'ASSUMED default; nobody declared it' or 'confirmed by lab'." ;
+    sh:select """SELECT $this WHERE { FILTER NOT EXISTS { $this <http://www.w3.org/ns/dqv#hasQualityMeasurement> ?m .
+      ?m <http://www.w3.org/ns/dqv#isMeasurementOf> <https://example.org/ldv/metric/status> ; <http://www.w3.org/ns/dqv#value> ?v .
+      FILTER (STRSTARTS(?v, "declared") || STRSTARTS(?v, "ASSUMED") || ?v = "confirmed by lab") } }""" ] .
