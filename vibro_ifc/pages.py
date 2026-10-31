@@ -274,12 +274,24 @@ def render_build() -> None:
     from vibro_ifc import build_service as bs
 
     st.title("Build from new data")
-    st.caption("Upload an IFC and the Polytec TXT files of a new measurement. The builder writes one v0.6 record per file, a spectra cache and a Blender view configuration. Your files are not modified.")
+    st.caption("Upload an IFC, the Polytec TXT files and the lab form of a measurement. The builder writes one v0.6 record per file, a spectra cache and a Blender view configuration. Your files are not modified.")
     ifc_file = st.file_uploader("IFC model (a single wall works best)", type=["ifc"])
     txt_files = st.file_uploader("Polytec TXT files (one per scan point)", type=["txt"], accept_multiple_files=True)
-    template = st.file_uploader("Lab facts (JSON-LD template, optional)", type=["jsonld", "json"])
-    if template is None:
-        st.warning("No template uploaded: the built-in template holds the lab facts of the CLT10-4-3 test (method, instrument, excitation as reported). For a different test, upload your own template, or those facts will be wrong.")
+    form_file = st.file_uploader("Lab form (Word .docx, the context file of the test)", type=["docx"])
+    facts = None
+    if form_file is not None:
+        from vibro_ifc import lab_form
+
+        facts = lab_form.read_form(form_file.getvalue())
+        st.markdown("**Read from the lab form** (check before building)")
+        st.dataframe(pd.DataFrame([{"Fact": v["label"], "Value": "" if v["value"] is None else str(v["value"]), "Status": v["status"]} for v in facts.values()]),
+                     use_container_width=True, hide_index=True)
+        st.caption("Facts not found are left out of the records and listed as absent. 'Read, not stored yet' facts are in your form but the profile has no field for them yet.")
+    template = None
+    with st.expander("Advanced: use a JSON-LD template instead of the form"):
+        template = st.file_uploader("Lab facts (JSON-LD template)", type=["jsonld", "json"])
+    if form_file is None and template is None:
+        st.warning("No lab form uploaded: the built-in lab facts of the CLT10-4-3 test are used (method, location, conditions, excitation as reported). For a different test, upload its lab form, or those facts will be wrong.")
     with st.expander("Options"):
         c1, c2, c3 = st.columns(3)
         freq = c1.number_input("Default frequency (Hz)", min_value=1.0, value=1000.0)
@@ -289,9 +301,14 @@ def render_build() -> None:
     if st.button("Build records", type="primary", disabled=not (ifc_file and txt_files)):
         with st.spinner("Reading the IFC geometry and the measurement files..."):
             try:
+                template_bytes = template.getvalue() if template else None
+                if form_file is not None and template is None:
+                    from vibro_ifc import lab_form
+
+                    template_bytes, _, _ = lab_form.template_from_form(form_file.getvalue(), [f.name for f in txt_files])
                 result = bs.build_from_uploads(
                     ifc_file.name, ifc_file.getvalue(), {f.name: f.getvalue() for f in txt_files},
-                    template.getvalue() if template else None,
+                    template_bytes,
                     default_freq_hz=freq, default_channel=channel, face_name=face,
                 )
             except bs.BuildError as exc:

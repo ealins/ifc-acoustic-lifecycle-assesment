@@ -6,3 +6,4 @@ networkx>=3.0
 plotly>=5.20
 pyshacl>=0.30
 ifcopenshell>=0.8.3
+python-docx>=1.1
